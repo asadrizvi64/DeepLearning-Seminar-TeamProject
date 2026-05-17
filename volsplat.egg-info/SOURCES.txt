@@ -1,0 +1,12 @@
+pyproject.toml
+volsplat/__init__.py
+volsplat/data.py
+volsplat/densify.py
+volsplat/gaussians.py
+volsplat/losses.py
+volsplat/train.py
+volsplat.egg-info/PKG-INFO
+volsplat.egg-info/SOURCES.txt
+volsplat.egg-info/dependency_links.txt
+volsplat.egg-info/requires.txt
+volsplat.egg-info/top_level.txt

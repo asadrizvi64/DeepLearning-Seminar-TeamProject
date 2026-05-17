@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "volsplat"
+version = "0.1.0"
+description = "3D Gaussian Splatting for volumetric microscopy (CMS-Team Project, TU Dresden)"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.1",
+    "numpy",
+    "scipy",
+    "tifffile",
+    "scikit-image",
+    "matplotlib",
+    "tqdm",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["volsplat*"]
