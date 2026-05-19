@@ -7,6 +7,7 @@ Requires-Dist: torch>=2.1
 Requires-Dist: numpy
 Requires-Dist: scipy
 Requires-Dist: tifffile
+Requires-Dist: imagecodecs
 Requires-Dist: scikit-image
 Requires-Dist: matplotlib
 Requires-Dist: tqdm

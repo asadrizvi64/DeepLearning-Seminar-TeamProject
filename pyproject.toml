@@ -12,6 +12,7 @@ dependencies = [
     "numpy",
     "scipy",
     "tifffile",
+    "imagecodecs",  # required to decode LZW-compressed CTC TIFFs
     "scikit-image",
     "matplotlib",
     "tqdm",

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pip install imagecodecs -q --user)",
+      "Bash(python -c \"import imagecodecs; print\\('imagecodecs', imagecodecs.__version__\\)\")",
+      "Bash(python scripts/inspect_ctc.py --root \"D:\\\\Download\\\\train\\\\Fluo-N3DL-DRO \\(1\\)\\\\Fluo-N3DL-DRO\" --sequence 01 --frame 0 --crop --out-dir runs/inspect_t000)",
+      "Bash(python -c \"import torch; print\\('CUDA available:', torch.cuda.is_available\\(\\)\\); print\\('device:', torch.cuda.get_device_name\\(0\\) if torch.cuda.is_available\\(\\) else 'CPU only'\\)\")",
+      "Bash(python -c \"import volsplat; from volsplat.ctc import load_ctc_frame, load_segmentation; from volsplat.train import init_gaussians_from_volume; import numpy as np; g=init_gaussians_from_volume\\(np.random.rand\\(8,8,8\\).astype\\('f4'\\),50,init_scale=\\(2.0,2.0,0.4\\)\\); print\\('anisotropic init OK, scales[0]=',g.scales[0].tolist\\(\\)\\); print\\('package OK'\\)\")"
+    ]
+  }
+}

@@ -28,13 +28,18 @@ from .data import intensity_weighted_sample
 def init_gaussians_from_volume(
     volume: np.ndarray,
     num_gaussians: int,
-    init_scale: float = 2.0,
+    init_scale=2.0,
     seed: int = 0,
 ) -> GaussianSet:
     """Intensity-weighted initialization.
 
-    Positions sampled proportional to intensity; isotropic initial scale; amplitude set
-    to the local intensity; identity rotation.
+    Positions sampled proportional to intensity; amplitude set to the local intensity;
+    identity rotation.
+
+    `init_scale` is either a scalar (isotropic) or a 3-tuple `(sx, sy, sz)` (anisotropic,
+    per-axis in voxel units). For anisotropic-voxel data (e.g. light-sheet with 5x z
+    anisotropy), pass something like `(2.0, 2.0, 0.4)` so the initial Gaussians are
+    roughly isotropic in physical units.
     """
     positions = intensity_weighted_sample(volume, num_gaussians, seed=seed)
 
@@ -47,7 +52,11 @@ def init_gaussians_from_volume(
     intensities = volume[iz, iy, ix]
     amplitudes = np.clip(intensities, 0.05, None).astype(np.float32)
 
-    scales = np.full((num_gaussians, 3), init_scale, dtype=np.float32)
+    if np.isscalar(init_scale):
+        scales = np.full((num_gaussians, 3), float(init_scale), dtype=np.float32)
+    else:
+        s = np.asarray(init_scale, dtype=np.float32).reshape(3)
+        scales = np.tile(s[None, :], (num_gaussians, 1))
     quats = np.zeros((num_gaussians, 4), dtype=np.float32)
     quats[:, 0] = 1.0
 
@@ -123,7 +132,7 @@ def train_static(
     eval_every: int = 1000,
     device: str = None,
     seed: int = 0,
-    init_scale: float = 2.0,
+    init_scale=2.0,
 ):
     """Fit a GaussianSet to a static 3D volume.
 

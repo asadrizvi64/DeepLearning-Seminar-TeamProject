@@ -1,5 +1,6 @@
 pyproject.toml
 volsplat/__init__.py
+volsplat/ctc.py
 volsplat/data.py
 volsplat/densify.py
 volsplat/gaussians.py

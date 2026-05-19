@@ -2,6 +2,7 @@ torch>=2.1
 numpy
 scipy
 tifffile
+imagecodecs
 scikit-image
 matplotlib
 tqdm
