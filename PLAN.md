@@ -198,7 +198,58 @@ The bias is not a transient: signed-mean ≈ MAE for alpha-blend means the model
 
 Voxel-query (equivalently, the full-grid differentiable voxelizer) is the primary supervision for P3 onward. Render-and-compare via the stock gsplat-style operator is unsuitable for density supervision on volumetric microscopy: the recovered density field is systematically too hot, with error proportional to local Gaussian crowding. A bias-free *analytic* projection (closed-form integral of the Gaussian along the viewing axis) remains a possible secondary path if projection-domain supervision is ever needed; it is unused for P3.
 
+### σ-robustness sweep
+
+Re-ran E1 at σ = 1, 2, 3 (10 blobs, 400 Gaussians, 1000 iters each) to check the bias is not an artifact of one blob size. Headline (mean recovered density / true density at blob centers):
+
+| σ | closed-form single-Gaussian factor | voxel-query at-blob ratio | alpha-blend at-blob ratio |
+|---|---|---|---|
+| 1.0 | 2.507 | 0.70 | 4.20 |
+| 2.0 | 5.013 | 0.97 | 13.51 |
+| 3.0 | 7.520 | 1.005 | 13.16 |
+
+Alpha-blend signed mean error by overlap count, all σ:
+
+| σ | ovl 0 | ovl 1 | ovl 2–3 | ovl 4–7 | ovl 8–15 | ovl 16+ |
+|---|---|---|---|---|---|---|
+| 1.0 | +0.000 | +0.001 | +0.003 | +0.011 | +0.046 | +0.470 |
+| 2.0 | +0.001 | +0.012 | +0.077 | +0.390 | +1.803 | +5.662 |
+| 3.0 | +0.016 | +0.117 | +0.671 | +2.307 | +5.878 | +13.980 |
+
+Voxel-query at the same bins stays within ±0.12 of zero at every σ. Conclusions:
+the alpha-blend overshoot is positive and grows monotonically with overlap at **every** σ, and the per-bin magnitude grows with σ. The closed-form single-Gaussian factor is a *lower bound* on the at-blob ratio, not an exact predictor — multi-blob overlap plus three-axis supervision pushes the realized inflation well above it. Voxel-query is unbiased across the whole sweep.
+
 ### Artifacts
 
 - `runs/e1_v1/e1_report.json` — first E1 run, σ=2.
-- `runs/e1_sigma1/`, `runs/e1_sigma2/`, `runs/e1_sigma3/` — σ-scaling robustness sweep.
+- `runs/e1_sigma1_0/`, `runs/e1_sigma2_0/`, `runs/e1_sigma3_0/` — σ-scaling robustness sweep (each has `log.txt` + `e1_report.json`).
+
+---
+
+## 12. P3 results (in progress)
+
+### E2 — initialization-strategy ablation
+
+Three strategies (`volsplat/init.py`), all trained with the voxel-query supervisor (the P2 decision) on the same phantom (32×48×48, 15 blobs σ=2, 500 Gaussians, 1000 iters):
+
+| strategy | init PSNR (pre-training) | final density PSNR | notes |
+|---|---|---|---|
+| random | 19.26 dB | 28.93 dB | best init, **worst final** |
+| intensity_weighted | −1.24 dB | 36.07 dB | P1 default |
+| local_maxima | −1.23 dB | 36.34 dB | ≈ tie with intensity_weighted |
+
+**Findings:**
+
+1. **Structured init beats random by ~7 dB final** (36 vs 29), despite random having a *better* pre-training PSNR. The init-quality metric is misleading on its own: random sets every amplitude to the (low) mean intensity, so it trivially matches the mostly-empty volume at init but lacks the amplitude headroom to sharpen onto structure. The structured inits overshoot wildly at init (negative PSNR — 500 amplitude-loaded Gaussians piled on bright voxels) but converge far better. **Lesson: judge init by final quality, not init quality.**
+
+2. **local_maxima ≈ intensity_weighted (36.34 vs 36.07)** — a statistical tie on this phantom. Reason: the phantom has only 15 blobs, so the peak detector finds ~15 maxima and tops up the remaining ~485 Gaussians via intensity-weighted sampling. local_maxima only differs meaningfully when #peaks is comparable to #Gaussians; on dense real data (many nuclei) the gap should widen — worth re-testing on a real DRO ROI.
+
+3. **Fit-time numbers this run are unreliable** (282 / 405 / 443 s) — three sequential CPU runs on a shared box; per-iteration cost is identical across strategies (same N, same batch), so the spread is scheduling noise plus a one-time scipy-filter cost for local_maxima, not an algorithmic difference. Re-measure on the GPU box with an isolated process before reporting.
+
+4. **Time-to-target metric was broken in the first run** (reported "never" for all three despite 36 dB final): it compared the full-volume target against the per-batch training PSNR, which is systematically lower because batches are 70% intensity-biased. Fixed in `scripts/run_e2.py` (now reads `full_psnr` from periodic full-volume eval). Re-run will populate it correctly.
+
+**Tentative E2 decision:** intensity_weighted as the default (ties local_maxima on quality, simpler, no scipy dependency in the hot path). Revisit on real data where local_maxima may pull ahead.
+
+### Artifacts
+
+- `runs/e2_v1/e2_report.json`, `runs/e2_v1_log.txt`.

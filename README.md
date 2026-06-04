@@ -21,7 +21,11 @@ framing.
   **Decision: voxel-query is the primary supervision for P3 onward.** See `runs/e1_v1/`
   and `runs/e1_sigma*/` for the artifacts; `PLAN.md` §11 for the writeup.
 - **P3** (static characterization — E2 init / E3 budget / E4 densify / E5 baselines):
-  in progress.
+  in progress. **E2 done**: three init strategies in `volsplat/init.py`
+  (`random`, `intensity_weighted`, `local_maxima`); structured init beats random by
+  ~7 dB final PSNR; `local_maxima` ties `intensity_weighted` on the sparse phantom
+  (expected to pull ahead on dense real data). Default stays `intensity_weighted`.
+  See `runs/e2_v1/` and `PLAN.md` §12. Next: E3 budget sweep / E4 densify re-tune.
 
 ## Setup
 

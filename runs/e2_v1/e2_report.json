@@ -1,0 +1,36 @@
+{
+  "config": {
+    "out_dir": "runs/e2_v1",
+    "shape": [
+      32,
+      48,
+      48
+    ],
+    "num_blobs": 15,
+    "sigma": 2.0,
+    "num_gaussians": 500,
+    "iterations": 1000,
+    "target_psnr": 25.0,
+    "seed": 0
+  },
+  "results": {
+    "random": {
+      "init_psnr": 19.263040278854675,
+      "final_psnr": 28.933258972342554,
+      "fit_time_s": 405.2886471748352,
+      "iters_to_target": -1
+    },
+    "intensity_weighted": {
+      "init_psnr": -1.2382724752535803,
+      "final_psnr": 36.06980542538825,
+      "fit_time_s": 282.00508856773376,
+      "iters_to_target": -1
+    },
+    "local_maxima": {
+      "init_psnr": -1.2274458346119768,
+      "final_psnr": 36.33528779484868,
+      "fit_time_s": 443.20246148109436,
+      "iters_to_target": -1
+    }
+  }
+}

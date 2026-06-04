@@ -36,9 +36,15 @@ def init_psnr(gs, volume_t, subsample: int = 50_000) -> float:
 
 
 def iters_to_target(history, target_psnr: float) -> int:
-    """First iteration in `history` where logged PSNR >= target. -1 if never."""
+    """First iteration where full-volume PSNR >= target. -1 if never.
+
+    Reads `full_psnr` entries (logged when train_static is called with eval_every>0).
+    Do NOT use the per-batch `psnr` field here - training batches are 70%
+    intensity-biased, so their PSNR is systematically lower than the full-volume
+    PSNR and would report "never" even after the model has converged well.
+    """
     for h in history:
-        if isinstance(h, dict) and 'psnr' in h and h['psnr'] >= target_psnr:
+        if isinstance(h, dict) and 'full_psnr' in h and h['full_psnr'] >= target_psnr:
             return int(h['iter'])
     return -1
 
@@ -90,7 +96,7 @@ def main():
         gs, hist = train_static(
             vol, num_gaussians=args.num_gaussians, iterations=args.iterations,
             init_strategy=strat, init_scale=2.0, seed=args.seed,
-            log_every=50, eval_every=0,
+            log_every=50, eval_every=100,   # full-volume eval for the time-to-target metric
         )
         fit_time = time.time() - t0
         psnr_final = evaluate_full(gs, volume_t, subsample=100_000)
