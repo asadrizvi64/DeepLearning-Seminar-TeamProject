@@ -1,11 +1,15 @@
+README.md
 pyproject.toml
 volsplat/__init__.py
+volsplat/bias.py
 volsplat/ctc.py
 volsplat/data.py
 volsplat/densify.py
 volsplat/gaussians.py
 volsplat/losses.py
+volsplat/rasterize.py
 volsplat/train.py
+volsplat/tribolium.py
 volsplat.egg-info/PKG-INFO
 volsplat.egg-info/SOURCES.txt
 volsplat.egg-info/dependency_links.txt

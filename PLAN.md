@@ -156,3 +156,49 @@ Deliverable: a single fidelity-vs-storage Pareto plot with 3DGS as one curve amo
 ## Suggested first two weeks
 
 P0 in full, then start P1: get one *Tribolium* volume fitting end-to-end with render-and-compare on the synthetic phantom first, then real data. The goal of the first sprint is a *pipeline*, not quality — quality work starts once E1 has decided the supervision strategy.
+
+---
+
+## 11. P2 results — E1 integration-bias study
+
+**Status: complete. Decision: voxel-query supervision for P3 onward.**
+
+### Setup
+
+- Implementation: pure-torch orthographic alpha-blending rasterizer in `volsplat/rasterize.py` (front-to-back depth-sort + cumprod(1-α), splat opacity clamped at 0.999), and a projection-supervised training loop `train_static_projection` cycling through the three axis-aligned views.
+- Diagnostic: `volsplat/bias.py` reports MAE, RMSE, signed mean error on a uniform voxel subsample, stratified by per-voxel Gaussian-overlap count (number of Gaussians contributing >10% of their peak at that voxel).
+- Runner: `scripts/run_e1.py` trains both supervisors with matched init / Adam / budget on the same phantom, then runs the diagnostic on each.
+
+### Single-Gaussian sanity check (closed form)
+
+The R²-Gaussian bias has a closed-form prediction for an isolated Gaussian rendered along axis z: the true z-sum-projection equals the alpha-blended render times √(2π)·σ_z. We verified this numerically with one Gaussian (α=1, σ=2): predicted ratio 5.013, measured 5.018. The alpha-blend model trained to match the true sum-projection must therefore inflate its amplitude by ~√(2π)·σ_z, producing a density field that overshoots ground truth at every Gaussian's center.
+
+### E1 on the phantom (24×40×40, 15 blobs σ=2, 400 Gaussians, 800 iters)
+
+| supervisor | density PSNR | signed mean | at-blob ratio |
+|---|---|---|---|
+| voxel-query | +31.7 dB | +0.010 | 0.96× |
+| alpha-blend | −7.1 dB | +0.599 | 14.8× |
+
+Signed error stratified by Gaussian overlap count (alpha-blend):
+
+| overlap | 0 | 1 | 2–3 | 4–7 | 8–15 | 16+ |
+|---|---|---|---|---|---|---|
+| signed mean | +0.006 | +0.062 | +0.310 | +1.30 | +4.96 | +12.46 |
+
+The bias is positive (overshoot), monotonic, and grows roughly geometrically with overlap count — exactly the R²-Gaussian prediction. Voxel-query at the same overlap bins stays under +0.04.
+
+### Interpretation
+
+The closed-form 5.0× minimum is for isolated Gaussians along a single axis. The phantom has heavy blob overlap (typical of microscopy) and the supervisor cycles three axes, so the trained model is forced to inflate further to satisfy all three projections against an overlap-summed GT. The measured 14.8× at-blob ratio is the consistent extension of the 5.0× floor, not a contradiction of it.
+
+The bias is not a transient: signed-mean ≈ MAE for alpha-blend means the model converges *toward* the inflated solution rather than oscillating around an unbiased one. Longer training would tighten projection PSNR but not the density-domain bias.
+
+### Decision
+
+Voxel-query (equivalently, the full-grid differentiable voxelizer) is the primary supervision for P3 onward. Render-and-compare via the stock gsplat-style operator is unsuitable for density supervision on volumetric microscopy: the recovered density field is systematically too hot, with error proportional to local Gaussian crowding. A bias-free *analytic* projection (closed-form integral of the Gaussian along the viewing axis) remains a possible secondary path if projection-domain supervision is ever needed; it is unused for P3.
+
+### Artifacts
+
+- `runs/e1_v1/e1_report.json` — first E1 run, σ=2.
+- `runs/e1_sigma1/`, `runs/e1_sigma2/`, `runs/e1_sigma3/` — σ-scaling robustness sweep.

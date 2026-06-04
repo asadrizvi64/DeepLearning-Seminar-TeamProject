@@ -12,7 +12,16 @@ framing.
 - **CTC bring-up**: loader, percentile normalization, ROI cropping, anisotropic
   init, inspection script with per-axis MIPs, real-data training script — all in
   place and tested against the Keller-lab *Fluo-N3DL-DRO* dataset.
-- **P2** (slab-projection rasterizer + differentiable voxelizer + E1): not started.
+- **P2** (orthographic alpha-blending rasterizer + E1 integration-bias study): **done.**
+  The rasterizer reproduces the closed-form R²-Gaussian bias on an isolated Gaussian
+  (predicted √(2π)·σ ≈ 5.013, measured 5.018). The full E1 run shows a clean
+  monotonic positive bias growing with Gaussian-overlap count for the alpha-blend
+  supervisor (signed mean +0.006 at overlap 0 → +12.5 at overlap 16+), while the
+  voxel-query supervisor stays unbiased (at-blob ratio 0.96× vs 14.8× for alpha-blend).
+  **Decision: voxel-query is the primary supervision for P3 onward.** See `runs/e1_v1/`
+  and `runs/e1_sigma*/` for the artifacts; `PLAN.md` §11 for the writeup.
+- **P3** (static characterization — E2 init / E3 budget / E4 densify / E5 baselines):
+  in progress.
 
 ## Setup
 
