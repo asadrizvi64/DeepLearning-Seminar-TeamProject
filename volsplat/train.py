@@ -18,7 +18,7 @@ import torch
 from tqdm import tqdm
 
 from .gaussians import GaussianSet
-from .losses import mse_loss, psnr
+from .losses import mse_loss, psnr, mae
 from .densify import densify, build_optimizer
 from .data import intensity_weighted_sample
 from .init import init_gaussians
@@ -35,7 +35,8 @@ def init_gaussians_from_volume(
     """Backward-compatible intensity-weighted initialization.
 
     Kept so existing scripts keep working. New code should call `init_gaussians(...)`
-    with an explicit `strategy` instead - see `volsplat.init`.
+    with an explicit `strategy` instead.
+    In theory, you can initialize as written in the previous version.
     """
     return init_gaussians(
         volume, num_gaussians,
@@ -119,6 +120,7 @@ def train_static(
 
     `init_strategy` selects among the strategies in `volsplat.init.INIT_STRATEGIES`:
     'random', 'intensity_weighted' (P1 default), or 'local_maxima' (E2).
+    Again though, the line intensity weighted could be removed, as in previous version.
     """
     if device is None:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -291,6 +293,8 @@ def train_static_projection(
     return gs, history
 
 
+# ------------------------------------------------------------------ evaluation
+
 @torch.no_grad()
 def evaluate_full(gs: GaussianSet, volume_t: torch.Tensor, subsample: int = 50_000) -> float:
     """PSNR on a uniform random voxel subsample over the whole volume."""
@@ -304,3 +308,25 @@ def evaluate_full(gs: GaussianSet, volume_t: torch.Tensor, subsample: int = 50_0
     targets = volume_t[z.long(), y.long(), x.long()]
     pred = gs.query_density(positions)
     return psnr(pred, targets)
+
+
+@torch.no_grad()
+def evaluate_mae(gs: GaussianSet, volume_t: torch.Tensor, subsample: int = 50_000) -> float:
+    """MAE on a uniform random voxel subsample over the whole volume.
+
+    Added for E3 (or whatever is in that matrix thingy XD) as the second reconstruction quality metric.
+
+    MAE is complementary to PSNR: it is in native intensity units [0, 1] and
+    is not log-scaled, so it makes the absolute per-voxel error legible, and it
+    is less sensitive to rare large outliers than PSNR's squared-error base.
+    """
+    D, H, W = volume_t.shape
+    device = volume_t.device
+    n = min(subsample, D * H * W)
+    x = torch.randint(0, W, (n,), device=device).float()
+    y = torch.randint(0, H, (n,), device=device).float()
+    z = torch.randint(0, D, (n,), device=device).float()
+    positions = torch.stack([x, y, z], dim=-1)
+    targets = volume_t[z.long(), y.long(), x.long()]
+    pred = gs.query_density(positions)
+    return mae(pred, targets)
