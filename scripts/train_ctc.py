@@ -92,6 +92,12 @@ def main():
     final_psnr = evaluate_full(gs, volume_t, subsample=200_000)
     history.append({'final_psnr': float(final_psnr)})
 
+    # Save the exact cropped ROI so the post-fit diagnostic is reproducible
+    # (compare_fit.py --volume runs/.../roi.npy matches the fit's target exactly,
+    # instead of re-deriving the crop and risking a mismatch).
+    np.save(out / 'roi.npy', vol.astype(np.float32))
+    print(f'  saved ROI -> {out / "roi.npy"}  (shape {vol.shape})')
+
     # Save
     torch.save({
         'positions':     gs.positions.detach().cpu(),

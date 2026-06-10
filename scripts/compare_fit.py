@@ -93,7 +93,15 @@ def main():
     out = Path(args.out_dir)
     out.mkdir(parents=True, exist_ok=True)
 
-    gt = load_volume(args.volume)                       # (D, H, W) in [0,1]
+    # .npy is assumed to be an already-normalized ROI (e.g. train_ctc.py's roi.npy):
+    # load it RAW so we compare against the exact target the fit saw. A cropped ROI
+    # is normalized on the full frame then cropped, so re-running min-max here would
+    # distort it. .tif goes through load_volume (min-max to [0,1]) as before.
+    if str(args.volume).endswith('.npy'):
+        gt = np.load(args.volume).astype(np.float32)
+        print(f'Loaded ROI raw (no renormalization) from {args.volume}')
+    else:
+        gt = load_volume(args.volume)                   # (D, H, W) in [0,1]
     gs, ckpt = load_gaussian_set(args.checkpoint)
     print(f'Volume {gt.shape}, {gs.num_gaussians} Gaussians')
     pos = gs.positions.detach().numpy()
