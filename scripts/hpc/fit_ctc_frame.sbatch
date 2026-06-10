@@ -14,6 +14,8 @@
 #SBATCH --job-name=volsplat-ctc
 #SBATCH --partition=alpha
 #SBATCH --account=p_scads_mlhpc            # TU Dresden project account
+#SBATCH --nodes=1                          # alpha cli_filter requires explicit node count
+#SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=8000                  # 8 cpus * 8 GB = 64 GB host RAM
@@ -43,7 +45,8 @@ OUT_DIR="$WS/runs/ctc_t000_gpu"
 # ---- the fit ----------------------------------------------------------------
 # GPU-appropriate config: bigger ROI, far more Gaussians, enough iters to converge.
 # Anisotropic init (xy=2.0, z=0.4 voxels) is on by default for DRO's 5x z-anisotropy.
-srun python scripts/train_ctc.py \
+# Call python directly (single-task job) - avoids the alpha srun cli_filter.
+python scripts/train_ctc.py \
     --root "$DRO_ROOT" \
     --sequence 01 \
     --frame 0 \
