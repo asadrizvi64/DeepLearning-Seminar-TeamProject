@@ -17,8 +17,8 @@
 #SBATCH --nodes=1                          # alpha cli_filter requires explicit node count
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem-per-cpu=8000                  # 8 cpus * 8 GB = 64 GB host RAM
+#SBATCH --cpus-per-task=6                   # alpha limit: <=6 cores per requested GPU
+#SBATCH --mem-per-cpu=8000                  # 6 cpus * 8 GB = 48 GB host RAM (ample)
 #SBATCH --time=02:00:00                     # generous; the fit itself is minutes
 #SBATCH --output=logs/%x_%j.out
 
