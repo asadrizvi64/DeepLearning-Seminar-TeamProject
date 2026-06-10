@@ -30,10 +30,15 @@ module load release/24.04 GCCcore/12.3.0 Python/3.11.3
 # shellcheck disable=SC1091
 source "$VENV_DIR/bin/activate"
 
-# ---- data location on the cluster -------------------------------------------
-# Copy the dataset to a workspace first (NOT $HOME). The DRO 01 sequence is ~GBs.
-# Example transfer from your machine via the export/datamover nodes (see README).
-DRO_ROOT="${DRO_ROOT:-PLACEHOLDER_PATH/Fluo-N3DL-DRO}"   # <-- holds 01/ and 01_GT/
+# ---- workspace (compute + data + outputs live here, NOT in HOME/project) ----
+# Resolve the workspace created with: ws_allocate -F horse volsplat 90
+WS="$(ws_find volsplat)"
+if [ -z "$WS" ]; then echo "Workspace 'volsplat' not found - run ws_allocate first." >&2; exit 1; fi
+
+# Dataset location: copy the DRO data into the workspace first (see README).
+# Override at submit time with:  sbatch --export=ALL,DRO_ROOT=/some/path fit_ctc_frame.sbatch
+DRO_ROOT="${DRO_ROOT:-$WS/Fluo-N3DL-DRO}"               # must hold 01/ (and 01_GT/ later)
+OUT_DIR="$WS/runs/ctc_t000_gpu"
 
 # ---- the fit ----------------------------------------------------------------
 # GPU-appropriate config: bigger ROI, far more Gaussians, enough iters to converge.
@@ -46,7 +51,8 @@ srun python scripts/train_ctc.py \
     --num-gaussians 40000 \
     --iterations 5000 \
     --batch-size 8192 \
-    --out-dir runs/ctc_t000_gpu
+    --out-dir "$OUT_DIR"
 
-echo "Done. Outputs in runs/ctc_t000_gpu/ (final.pt, history.json)."
-echo "Next: run scripts/compare_fit.py for the MIP/slice/residual diagnostic + SSIM."
+echo "Done. Outputs in $OUT_DIR (final.pt, history.json, roi.npy)."
+echo "Next: python scripts/compare_fit.py --volume $OUT_DIR/roi.npy \\"
+echo "        --checkpoint $OUT_DIR/final.pt --out-dir $OUT_DIR/compare"
