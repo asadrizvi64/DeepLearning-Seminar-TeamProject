@@ -25,7 +25,14 @@ framing.
   (`random`, `intensity_weighted`, `local_maxima`); structured init beats random by
   ~7 dB final PSNR; `local_maxima` ties `intensity_weighted` on the sparse phantom
   (expected to pull ahead on dense real data). Default stays `intensity_weighted`.
-  See `runs/e2_v1/` and `PLAN.md` §12. Next: E3 budget sweep / E4 densify re-tune.
+  E3 budget sweep on the `MAE/Gaus_budget` branch. See `runs/e2_v1/`, `PLAN.md` §12.
+- **P4** (export + viewer): **exporter done.** `volsplat/export.py` →
+  `.ply` (INRIA-3DGS) + `.splat` (antimatter15) via `scripts/export_splat.py`;
+  **E6 round-trip is exact** (0.0 position/scale error). Density amplitude maps to
+  grayscale + opacity so nuclei show up in standard web viewers (SuperSplat,
+  antimatter15/splat). `scripts/preview_splat.py` gives a no-browser 3D preview.
+- **HPC**: TU Dresden Alpha (A100) wired up — `scripts/hpc/` (setup + SLURM job).
+  Converged real-data fit runs there; CPU is phantom-only.
 
 ## Setup
 
