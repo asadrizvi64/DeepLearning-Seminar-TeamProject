@@ -26,11 +26,18 @@ framing.
   ~7 dB final PSNR; `local_maxima` ties `intensity_weighted` on the sparse phantom
   (expected to pull ahead on dense real data). Default stays `intensity_weighted`.
   E3 budget sweep on the `MAE/Gaus_budget` branch. See `runs/e2_v1/`, `PLAN.md` §12.
-- **P4** (export + viewer): **exporter done.** `volsplat/export.py` →
+- **P4** (export + viewer): **done.** `volsplat/export.py` →
   `.ply` (INRIA-3DGS) + `.splat` (antimatter15) via `scripts/export_splat.py`;
   **E6 round-trip is exact** (0.0 position/scale error). Density amplitude maps to
-  grayscale + opacity so nuclei show up in standard web viewers (SuperSplat,
-  antimatter15/splat). `scripts/preview_splat.py` gives a no-browser 3D preview.
+  grayscale + opacity so nuclei show in web viewers. `scripts/preview_splat.py` for
+  a no-browser 3D preview; **`viewer/index.html`** is a self-contained WebGL splat
+  viewer with a frame slider for 3D+t scrubbing (`python -m http.server`-served).
+- **P5** (temporal, 3D+t): **shared-identity variant done.** `volsplat/temporal.py`:
+  4D moving-blob phantom with controlled division events (E8 testbed), shared-identity
+  per-frame fitting (warm-start carries Gaussian identity across frames), and E7
+  metrics (temporal smoothness, frame-to-frame consistency). `scripts/train_temporal.py`
+  fits a sequence and exports one `.splat` per frame for the viewer. Native-4D and
+  deformation variants still to come.
 - **HPC**: TU Dresden Alpha (A100) wired up — `scripts/hpc/` (setup + SLURM job).
   Converged real-data fit runs there; CPU is phantom-only.
 

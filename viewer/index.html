@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>volsplat viewer</title>
+<style>
+  html,body{margin:0;height:100%;background:#0b0b10;color:#cfd2dc;font:14px/1.5 system-ui,sans-serif;overflow:hidden}
+  #c{position:fixed;inset:0}
+  #ui{position:fixed;left:12px;top:12px;z-index:10;background:rgba(20,20,28,.82);
+      padding:12px 14px;border:1px solid #2a2a38;border-radius:10px;max-width:320px}
+  h1{font-size:15px;margin:0 0 8px;font-weight:600}
+  .row{margin:8px 0}
+  input[type=range]{width:100%}
+  label{font-size:12px;color:#9aa0b4}
+  .hint{font-size:12px;color:#8a8fa3;margin-top:8px}
+  #drop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+        background:rgba(10,10,16,.7);font-size:18px;z-index:20}
+  code{background:#1a1a24;padding:1px 5px;border-radius:4px;color:#b9bed0}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <h1>volsplat &mdash; splat viewer</h1>
+  <div class="row">
+    <input id="file" type="file" accept=".splat" multiple/>
+    <div class="hint">Load one <code>.splat</code>, or several frames (named
+      t000.splat, t001.splat&hellip;) for 3D+t scrubbing.</div>
+  </div>
+  <div class="row" id="frameRow" style="display:none">
+    <label>frame <span id="frameLbl">0</span></label>
+    <input id="frame" type="range" min="0" max="0" value="0" step="1"/>
+  </div>
+  <div class="row">
+    <label>point size <span id="szLbl">1.0</span></label>
+    <input id="size" type="range" min="0.2" max="5" value="1" step="0.1"/>
+  </div>
+  <div class="hint" id="stat">Drag a .splat here, or use the picker. Drag to orbit, scroll to zoom.</div>
+</div>
+<div id="drop">Drop .splat file(s)</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const SP = 32; // bytes per splat: pos[3]f32, scale[3]f32, rgba[4]u8, rot[4]u8
+let renderer, scene, camera, controls, cloud = null;
+let frames = [];          // [{name, geometry}]
+let curFrame = 0, ptSize = 1.0;
+
+function init(){
+  renderer = new THREE.WebGLRenderer({canvas:document.getElementById('c'), antialias:true});
+  renderer.setPixelRatio(devicePixelRatio); renderer.setSize(innerWidth, innerHeight);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.01, 100);
+  camera.position.set(2.2, 1.4, 2.2);
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight;
+    camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+  animate();
+}
+
+// circular sprite so points look like soft splats
+function sprite(){
+  const s=64, cv=document.createElement('canvas'); cv.width=cv.height=s;
+  const g=cv.getContext('2d').createRadialGradient(s/2,s/2,0,s/2,s/2,s/2);
+  g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  const ctx=cv.getContext('2d'); ctx.fillStyle=g; ctx.fillRect(0,0,s,s);
+  const t=new THREE.Texture(cv); t.needsUpdate=true; return t;
+}
+const TEX = null;
+
+function parseSplat(buf){
+  const n = Math.floor(buf.byteLength / SP);
+  const dv = new DataView(buf);
+  const pos = new Float32Array(n*3), col = new Float32Array(n*3);
+  let cx=0,cy=0,cz=0;
+  for(let i=0;i<n;i++){
+    const o=i*SP;
+    const x=dv.getFloat32(o,true), y=dv.getFloat32(o+4,true), z=dv.getFloat32(o+8,true);
+    pos[i*3]=x; pos[i*3+1]=y; pos[i*3+2]=z; cx+=x; cy+=y; cz+=z;
+    col[i*3]=dv.getUint8(o+24)/255; col[i*3+1]=dv.getUint8(o+25)/255; col[i*3+2]=dv.getUint8(o+26)/255;
+  }
+  cx/=n; cy/=n; cz/=n;
+  // recenter + scale to a unit-ish box for viewing
+  let r=0; for(let i=0;i<n;i++){const dx=pos[i*3]-cx,dy=pos[i*3+1]-cy,dz=pos[i*3+2]-cz;
+    r=Math.max(r, Math.hypot(dx,dy,dz));}
+  r = r||1;
+  for(let i=0;i<n;i++){pos[i*3]=(pos[i*3]-cx)/r; pos[i*3+1]=(pos[i*3+1]-cy)/r; pos[i*3+2]=(pos[i*3+2]-cz)/r;}
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col,3));
+  geo.userData.count = n;
+  return geo;
+}
+
+function showFrame(i){
+  if(!frames.length) return;
+  curFrame = Math.max(0, Math.min(frames.length-1, i));
+  if(cloud) scene.remove(cloud);
+  const mat = new THREE.PointsMaterial({size:0.03*ptSize, vertexColors:true,
+    map:sprite(), transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    sizeAttenuation:true});
+  cloud = new THREE.Points(frames[curFrame].geometry, mat);
+  scene.add(cloud);
+  document.getElementById('frameLbl').textContent = curFrame;
+  document.getElementById('stat').textContent =
+    `${frames[curFrame].name}: ${frames[curFrame].geometry.userData.count.toLocaleString()} splats`;
+}
+
+async function loadFiles(fileList){
+  const files = [...fileList].filter(f=>f.name.endsWith('.splat')).sort((a,b)=>a.name.localeCompare(b.name));
+  if(!files.length) return;
+  frames = [];
+  for(const f of files){ frames.push({name:f.name, geometry:parseSplat(await f.arrayBuffer())}); }
+  const fr = document.getElementById('frame');
+  fr.max = frames.length-1; fr.value = 0;
+  document.getElementById('frameRow').style.display = frames.length>1 ? 'block':'none';
+  showFrame(0);
+  // frame the camera
+  controls.target.set(0,0,0); camera.position.set(2.2,1.4,2.2); controls.update();
+}
+
+function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene,camera); }
+
+document.getElementById('file').addEventListener('change', e=>loadFiles(e.target.files));
+document.getElementById('frame').addEventListener('input', e=>showFrame(+e.target.value));
+document.getElementById('size').addEventListener('input', e=>{
+  ptSize=+e.target.value; document.getElementById('szLbl').textContent=ptSize.toFixed(1); showFrame(curFrame); });
+const drop=document.getElementById('drop');
+addEventListener('dragover', e=>{e.preventDefault(); drop.style.display='flex';});
+drop.addEventListener('dragleave', ()=>drop.style.display='none');
+addEventListener('drop', e=>{e.preventDefault(); drop.style.display='none'; loadFiles(e.dataTransfer.files);});
+
+init();
+</script>
+</body>
+</html>

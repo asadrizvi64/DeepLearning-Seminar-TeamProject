@@ -7,6 +7,12 @@ from .bias import bias_diagnostic, overlap_count
 from .init import init_gaussians, INIT_STRATEGIES
 from .densify import densify, build_optimizer
 from .export import to_ply, to_splat, read_ply
+from .temporal import (
+    generate_phantom_4d,
+    fit_timeseries_shared_identity,
+    temporal_smoothness,
+    frame_to_frame_consistency,
+)
 from .ctc import (
     VOXEL_SIZE_DRO_UM,
     load_ctc_frame,
