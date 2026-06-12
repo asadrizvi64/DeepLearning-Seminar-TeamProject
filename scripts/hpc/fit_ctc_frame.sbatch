@@ -5,11 +5,12 @@
 #
 # Submit from the repo root on a login node:
 #   sbatch scripts/hpc/fit_ctc_frame.sbatch
-# Watch it:
-#   squeue --me        # queue status
-#   tail -f logs/volsplat-ctc_*.out
-#
-# Fill in the two PLACEHOLDERs below before submitting.
+# The SLURM stdout log goes to node-local /tmp (always writable on compute nodes)
+# and is copied to $WS/logs/ on exit, because /projects is read-only there.
+# Check it after the job runs:
+#   squeue --me
+#   ls -t $(ws_find volsplat)/logs/
+#   tail -n 60 $(ws_find volsplat)/logs/volsplat-ctc_<jobid>.out
 
 #SBATCH --job-name=volsplat-ctc
 #SBATCH --partition=alpha
@@ -20,10 +21,18 @@
 #SBATCH --cpus-per-task=6                   # alpha limit: <=6 cores per requested GPU
 #SBATCH --mem-per-cpu=8000                  # 6 cpus * 8 GB = 48 GB host RAM (ample)
 #SBATCH --time=02:00:00                     # generous; the fit itself is minutes
-#SBATCH --output=logs/%x_%j.out
+#SBATCH --output=/tmp/%x_%j.out             # /projects is read-only on compute nodes
 
 set -euo pipefail
-mkdir -p logs
+
+# ---- workspace (resolved FIRST so we can capture logs even on early failure) -
+# Created with: ws_allocate -F horse volsplat 90.  ws_find needs no modules.
+WS="$(ws_find volsplat)"
+if [ -z "$WS" ]; then echo "Workspace 'volsplat' not found - run ws_allocate first." >&2; exit 1; fi
+mkdir -p "$WS/logs"
+# SLURM wrote stdout to node-local /tmp; mirror it to the workspace on exit
+# (success OR failure) so the log survives and is readable from the login node.
+trap 'cp "/tmp/${SLURM_JOB_NAME}_${SLURM_JOB_ID}.out" "$WS/logs/" 2>/dev/null || true' EXIT
 
 # ---- environment ------------------------------------------------------------
 VENV_DIR="${VENV_DIR:-$HOME/volsplat-venv}"     # must match setup_env.sh
@@ -31,11 +40,6 @@ module purge
 module load release/24.04 GCCcore/12.3.0 Python/3.11.3
 # shellcheck disable=SC1091
 source "$VENV_DIR/bin/activate"
-
-# ---- workspace (compute + data + outputs live here, NOT in HOME/project) ----
-# Resolve the workspace created with: ws_allocate -F horse volsplat 90
-WS="$(ws_find volsplat)"
-if [ -z "$WS" ]; then echo "Workspace 'volsplat' not found - run ws_allocate first." >&2; exit 1; fi
 
 # Dataset location: copy the DRO data into the workspace first (see README).
 # Override at submit time with:  sbatch --export=ALL,DRO_ROOT=/some/path fit_ctc_frame.sbatch
