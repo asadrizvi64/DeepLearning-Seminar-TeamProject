@@ -19,8 +19,9 @@ import copy
 
 import numpy as np
 import torch
+import torch.nn as nn
 
-from .gaussians import GaussianSet
+from .gaussians import GaussianSet, quaternion_to_rotation
 from .train import train_static, evaluate_full
 from .densify import build_optimizer
 from .losses import mse_loss
@@ -140,6 +141,113 @@ def fit_timeseries_shared_identity(
 
 
 # ----------------------------------------------------------- temporal metrics
+
+# =================================================================== native-4D
+
+class GaussianSet4D(nn.Module):
+    """One set of Gaussians with a time dimension: each primitive has a temporal
+    center t_i and extent sigma_t_i, so the whole sequence is O(N) (not O(T*N)).
+
+    Density at spatial point x and time t:
+        rho(x,t) = sum_i amp_i * exp(-0.5 * (||S_i^-1 R_i^T (x-mu_i)||^2
+                                             + (t - t_i)^2 / s_t_i^2))
+
+    Renders at any continuous t (supports temporal interpolation, E10).
+    """
+    def __init__(self, positions, scales, t_centers, t_scales,
+                 quaternions=None, amplitudes=None):
+        super().__init__()
+        N = positions.shape[0]
+        self.positions = nn.Parameter(positions.float())
+        self.log_scales = nn.Parameter(torch.log(scales.float().clamp_min(1e-4)))
+        if quaternions is None:
+            quaternions = torch.zeros(N, 4); quaternions[:, 0] = 1.0
+        self.quaternions = nn.Parameter(quaternions.float())
+        if amplitudes is None:
+            amplitudes = torch.ones(N)
+        self.amp_logits = nn.Parameter(torch.log(torch.expm1(amplitudes.float().clamp_min(1e-4))))
+        self.t_centers = nn.Parameter(t_centers.float())
+        self.log_t_scales = nn.Parameter(torch.log(t_scales.float().clamp_min(1e-3)))
+
+    @property
+    def num_gaussians(self): return self.positions.shape[0]
+
+    def query_density(self, points, t: float, chunk_size: int = 4096):
+        """Density at (P,3) spatial points for scalar time t. Returns (P,)."""
+        mu = self.positions
+        scales = torch.exp(self.log_scales)
+        R = quaternion_to_rotation(self.quaternions)
+        amp = torch.nn.functional.softplus(self.amp_logits)
+        t_c = self.t_centers
+        t_s = torch.exp(self.log_t_scales)
+        P = points.shape[0]
+        out = torch.zeros(P, device=points.device, dtype=points.dtype)
+        for s in range(0, P, chunk_size):
+            e = min(s + chunk_size, P)
+            diff = points[s:e].unsqueeze(1) - mu.unsqueeze(0)
+            local = torch.einsum('gji,pgj->pgi', R, diff)
+            quad = ((local / scales.unsqueeze(0)) ** 2).sum(-1)
+            tq = ((t - t_c) / t_s) ** 2
+            g = torch.exp(-0.5 * (quad + tq.unsqueeze(0)))
+            out[s:e] = (amp.unsqueeze(0) * g).sum(-1)
+        return out
+
+
+def fit_native_4d(volumes, num_gaussians: int = 1200, iterations: int = 2500,
+                  batch_size: int = 2048, device: str = None, seed: int = 0):
+    """Fit a single GaussianSet4D to all frames. Each iter picks a random frame,
+    samples spatial points there, and supervises the 4D density at that time."""
+    from .train import sample_training_points
+    from .init import init_gaussians
+    from .losses import mse_loss
+    if device is None:
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    torch.manual_seed(seed); np.random.seed(seed)
+    T = len(volumes)
+
+    # Init spatial params from the middle frame; spread t-centers across the sequence.
+    base = init_gaussians(volumes[T // 2], num_gaussians, strategy='intensity_weighted',
+                          seed=seed)
+    rng = np.random.default_rng(seed)
+    t_centers = torch.from_numpy(rng.uniform(0, T - 1, num_gaussians).astype(np.float32))
+    t_scales = torch.full((num_gaussians,), max(T / 4.0, 1.0))
+    gs = GaussianSet4D(base.positions.detach(), torch.exp(base.log_scales.detach()),
+                       t_centers, t_scales,
+                       base.quaternions.detach(),
+                       torch.nn.functional.softplus(base.amp_logits.detach())).to(device)
+    opt = torch.optim.Adam([
+        {'params': [gs.positions], 'lr': 0.0016},
+        {'params': [gs.log_scales], 'lr': 0.005},
+        {'params': [gs.quaternions], 'lr': 0.001},
+        {'params': [gs.amp_logits], 'lr': 0.05},
+        {'params': [gs.t_centers], 'lr': 0.01},
+        {'params': [gs.log_t_scales], 'lr': 0.01},
+    ])
+    vts = [torch.from_numpy(v.astype(np.float32)).to(device) for v in volumes]
+    for it in range(iterations):
+        t = int(rng.integers(0, T))
+        pos, tgt = sample_training_points(vts[t], batch_size)
+        loss = mse_loss(gs.query_density(pos, float(t)), tgt)
+        opt.zero_grad(); loss.backward(); opt.step()
+    return gs
+
+
+@torch.no_grad()
+def evaluate_4d_psnr(gs4d, volumes, t, subsample=50_000, device=None):
+    """Density PSNR of a GaussianSet4D against frame `t` (t may be non-integer)."""
+    from .losses import psnr
+    if device is None:
+        device = gs4d.positions.device
+    vt = volumes[int(round(t))]
+    D, H, W = vt.shape
+    n = min(subsample, D * H * W)
+    x = torch.randint(0, W, (n,), device=device).float()
+    y = torch.randint(0, H, (n,), device=device).float()
+    z = torch.randint(0, D, (n,), device=device).float()
+    pts = torch.stack([x, y, z], -1)
+    tgt = torch.from_numpy(vt.astype(np.float32)).to(device)[z.long(), y.long(), x.long()]
+    return psnr(gs4d.query_density(pts, float(t)), tgt)
+
 
 @torch.no_grad()
 def temporal_smoothness(sets) -> float:

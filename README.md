@@ -32,12 +32,14 @@ framing.
   grayscale + opacity so nuclei show in web viewers. `scripts/preview_splat.py` for
   a no-browser 3D preview; **`viewer/index.html`** is a self-contained WebGL splat
   viewer with a frame slider for 3D+t scrubbing (`python -m http.server`-served).
-- **P5** (temporal, 3D+t): **shared-identity variant done.** `volsplat/temporal.py`:
-  4D moving-blob phantom with controlled division events (E8 testbed), shared-identity
-  per-frame fitting (warm-start carries Gaussian identity across frames), and E7
-  metrics (temporal smoothness, frame-to-frame consistency). `scripts/train_temporal.py`
-  fits a sequence and exports one `.splat` per frame for the viewer. Native-4D and
-  deformation variants still to come.
+- **P5** (temporal, 3D+t): **shared-identity + native-4D done; E7 comparison built.**
+  `volsplat/temporal.py`: 4D moving-blob phantom with controlled division events (E8
+  testbed); **shared-identity** per-frame fitting (warm-start carries Gaussian identity,
+  O(T·N), ~37 dB/frame, supports tracking); **native-4D** `GaussianSet4D` (one set with
+  a time axis, O(N), continuous-t interpolation per E10); E7 metrics (temporal
+  smoothness, frame-to-frame consistency). `scripts/compare_temporal.py` tabulates the
+  trade-off (fidelity+tracking vs storage+interpolation); `scripts/train_temporal.py`
+  exports per-frame `.splat`s for the viewer. Deformation-field variant still to come.
 - **HPC**: TU Dresden Alpha (A100) wired up — `scripts/hpc/` (setup + SLURM job).
   Converged real-data fit runs there; CPU is phantom-only.
 
