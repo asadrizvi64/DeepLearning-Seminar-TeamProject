@@ -124,8 +124,10 @@ def main():
     print(f'  non-empty-voxel PSNR    = {psnr_struct:6.2f} dB   '
           f'(the honest structure number)')
     print(f'  empty-space fraction    = {empty.mean():.3f}')
-    print(f'  mean |err| in empty     = {err[empty].mean():.5f}')
-    print(f'  mean |err| in structure = {err[struct].mean():.5f}')
+    empty_err = f'{err[empty].mean():.5f}' if empty.any() else 'n/a (ROI fully dense)'
+    struct_err = f'{err[struct].mean():.5f}' if struct.any() else 'n/a'
+    print(f'  mean |err| in empty     = {empty_err}')
+    print(f'  mean |err| in structure = {struct_err}')
     print(f'  max |err|               = {err.max():.5f}  at GT={gt[np.unravel_index(err.argmax(), err.shape)]:.3f}')
     print(f'  recon intensity range   = [{recon.min():.3f}, {recon.max():.3f}]  (GT is [0,1])')
 
