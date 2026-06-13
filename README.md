@@ -25,7 +25,11 @@ framing.
   (`random`, `intensity_weighted`, `local_maxima`); structured init beats random by
   ~7 dB final PSNR; `local_maxima` ties `intensity_weighted` on the sparse phantom
   (expected to pull ahead on dense real data). Default stays `intensity_weighted`.
-  E3 budget sweep on the `MAE/Gaus_budget` branch. See `runs/e2_v1/`, `PLAN.md` §12.
+  E3 budget sweep on the `MAE/Gaus_budget` branch. **E5 baseline harness** in
+  `volsplat/baselines.py` + `scripts/run_e5.py` (3DGS vs compressed-voxel / sparse /
+  implicit fidelity-storage Pareto). Phantom run validates the harness only — the 3DGS
+  curve needs convergence-fair iterations and RQ2 needs dense real data. See `runs/e2_v1/`,
+  `PLAN.md` §12.
 - **P4** (export + viewer): **done.** `volsplat/export.py` →
   `.ply` (INRIA-3DGS) + `.splat` (antimatter15) via `scripts/export_splat.py`;
   **E6 round-trip is exact** (0.0 position/scale error). Density amplitude maps to
