@@ -130,6 +130,13 @@ def main():
     print(f'  mean |err| in structure = {struct_err}')
     print(f'  max |err|               = {err.max():.5f}  at GT={gt[np.unravel_index(err.argmax(), err.shape)]:.3f}')
     print(f'  recon intensity range   = [{recon.min():.3f}, {recon.max():.3f}]  (GT is [0,1])')
+    # 3D SSIM - the structure-fidelity number (PSNR can look fine while nuclei blur).
+    try:
+        from skimage.metrics import structural_similarity as _ssim
+        s = _ssim(gt, np.clip(recon, 0, 1), data_range=1.0)
+        print(f'  3D SSIM                 = {s:.4f}   (structure fidelity; >0.5 = nuclei resolving)')
+    except Exception as _e:
+        print(f'  3D SSIM                 = (skipped: {_e})')
 
     # ---- max-signal slice per axis ------------------------------------------
     slicer = {
