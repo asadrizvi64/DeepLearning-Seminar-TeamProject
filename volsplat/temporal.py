@@ -237,7 +237,7 @@ def evaluate_4d_psnr(gs4d, volumes, t, subsample=50_000, device=None):
     """Density PSNR of a GaussianSet4D against frame `t` (t may be non-integer)."""
     from .losses import psnr
     if device is None:
-        device = gs4d.positions.device
+        device = next(gs4d.parameters()).device
     vt = volumes[int(round(t))]
     D, H, W = vt.shape
     n = min(subsample, D * H * W)
@@ -247,6 +247,85 @@ def evaluate_4d_psnr(gs4d, volumes, t, subsample=50_000, device=None):
     pts = torch.stack([x, y, z], -1)
     tgt = torch.from_numpy(vt.astype(np.float32)).to(device)[z.long(), y.long(), x.long()]
     return psnr(gs4d.query_density(pts, float(t)), tgt)
+
+
+# =============================================================== deformation
+
+class GaussianSetDeform(nn.Module):
+    """Canonical Gaussians + a per-primitive polynomial motion field (deformation).
+
+    position(t) = mu0 + v*(t - t_ref) + 0.5*a*(t - t_ref)^2
+
+    Appearance (scale, rotation, amplitude) is shared across time; only positions
+    deform. O(N) base + O(N) motion params, renders at continuous t. Smooth by
+    construction (a low-order motion basis can't jitter), which is the point of the
+    deformation family. t_ref defaults to the sequence midpoint.
+    """
+    def __init__(self, positions, scales, t_ref, quaternions=None, amplitudes=None):
+        super().__init__()
+        N = positions.shape[0]
+        self.mu0 = nn.Parameter(positions.float())
+        self.vel = nn.Parameter(torch.zeros(N, 3))
+        self.acc = nn.Parameter(torch.zeros(N, 3))
+        self.log_scales = nn.Parameter(torch.log(scales.float().clamp_min(1e-4)))
+        if quaternions is None:
+            quaternions = torch.zeros(N, 4); quaternions[:, 0] = 1.0
+        self.quaternions = nn.Parameter(quaternions.float())
+        if amplitudes is None:
+            amplitudes = torch.ones(N)
+        self.amp_logits = nn.Parameter(torch.log(torch.expm1(amplitudes.float().clamp_min(1e-4))))
+        self.t_ref = float(t_ref)
+
+    @property
+    def num_gaussians(self): return self.mu0.shape[0]
+
+    def positions_at(self, t: float):
+        dt = t - self.t_ref
+        return self.mu0 + self.vel * dt + 0.5 * self.acc * (dt * dt)
+
+    def query_density(self, points, t: float, chunk_size: int = 4096):
+        mu = self.positions_at(t)
+        scales = torch.exp(self.log_scales)
+        R = quaternion_to_rotation(self.quaternions)
+        amp = torch.nn.functional.softplus(self.amp_logits)
+        P = points.shape[0]
+        out = torch.zeros(P, device=points.device, dtype=points.dtype)
+        for s in range(0, P, chunk_size):
+            e = min(s + chunk_size, P)
+            diff = points[s:e].unsqueeze(1) - mu.unsqueeze(0)
+            local = torch.einsum('gji,pgj->pgi', R, diff)
+            quad = ((local / scales.unsqueeze(0)) ** 2).sum(-1)
+            out[s:e] = (amp.unsqueeze(0) * torch.exp(-0.5 * quad)).sum(-1)
+        return out
+
+
+def fit_deformation(volumes, num_gaussians: int = 800, iterations: int = 2500,
+                    batch_size: int = 2048, device: str = None, seed: int = 0):
+    """Fit a canonical GaussianSet + polynomial motion to all frames."""
+    from .train import sample_training_points
+    from .init import init_gaussians
+    from .losses import mse_loss
+    if device is None:
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    torch.manual_seed(seed); np.random.seed(seed)
+    T = len(volumes); t_ref = (T - 1) / 2.0
+    base = init_gaussians(volumes[T // 2], num_gaussians, strategy='intensity_weighted', seed=seed)
+    gs = GaussianSetDeform(base.positions.detach(), torch.exp(base.log_scales.detach()),
+                           t_ref, base.quaternions.detach(),
+                           torch.nn.functional.softplus(base.amp_logits.detach())).to(device)
+    opt = torch.optim.Adam([
+        {'params': [gs.mu0], 'lr': 0.0016}, {'params': [gs.vel], 'lr': 0.004},
+        {'params': [gs.acc], 'lr': 0.002}, {'params': [gs.log_scales], 'lr': 0.005},
+        {'params': [gs.quaternions], 'lr': 0.001}, {'params': [gs.amp_logits], 'lr': 0.05},
+    ])
+    vts = [torch.from_numpy(v.astype(np.float32)).to(device) for v in volumes]
+    rng = np.random.default_rng(seed)
+    for it in range(iterations):
+        t = int(rng.integers(0, T))
+        pos, tgt = sample_training_points(vts[t], batch_size)
+        loss = mse_loss(gs.query_density(pos, float(t)), tgt)
+        opt.zero_grad(); loss.backward(); opt.step()
+    return gs
 
 
 @torch.no_grad()

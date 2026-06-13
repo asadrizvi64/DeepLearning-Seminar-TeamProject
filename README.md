@@ -39,7 +39,9 @@ framing.
   a time axis, O(N), continuous-t interpolation per E10); E7 metrics (temporal
   smoothness, frame-to-frame consistency). `scripts/compare_temporal.py` tabulates the
   trade-off (fidelity+tracking vs storage+interpolation); `scripts/train_temporal.py`
-  exports per-frame `.splat`s for the viewer. Deformation-field variant still to come.
+  exports per-frame `.splat`s for the viewer. **All three RQ3 variants now in**:
+  shared-identity, native-4D, and **deformation** (`GaussianSetDeform` — canonical
+  Gaussians + per-primitive polynomial motion, O(N), smooth-by-construction).
 - **HPC**: TU Dresden Alpha (A100) wired up — `scripts/hpc/` (setup + SLURM job).
   Converged real-data fit runs there; CPU is phantom-only.
 

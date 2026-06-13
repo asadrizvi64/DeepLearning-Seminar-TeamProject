@@ -10,6 +10,8 @@ from .export import to_ply, to_splat, read_ply
 from .temporal import (
     generate_phantom_4d,
     fit_timeseries_shared_identity,
+    GaussianSet4D, fit_native_4d, evaluate_4d_psnr,
+    GaussianSetDeform, fit_deformation,
     temporal_smoothness,
     frame_to_frame_consistency,
 )
