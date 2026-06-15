@@ -52,7 +52,10 @@ def main():
     p.add_argument('--shape', type=int, nargs=3, default=[32, 48, 48])
     p.add_argument('--num-blobs', type=int, default=20)
     p.add_argument('--sigma', type=float, default=2.0)
-    p.add_argument('--gs-iters', type=int, default=1200)
+    p.add_argument('--gs-iters', type=int, default=2000)
+    p.add_argument('--gs-budgets', type=int, nargs='+', default=[5, 10, 20, 50, 100],
+                   help='Gaussian budget sweep. Default is appropriate for num-blobs<=20. '
+                        'Larger budgets need proportionally more iters to converge.')
     p.add_argument('--out-dir', type=str, default='runs/e5')
     p.add_argument('--seed', type=int, default=0)
     args = p.parse_args()
@@ -75,7 +78,7 @@ def main():
                                 for h in (16, 32, 48, 64)]
     print('3DGS...')
     curves['3DGS'] = [gaussian_point(vol, volume_t, b, args.gs_iters, args.seed)
-                      for b in (200, 500, 1000, 2000)]
+                      for b in args.gs_budgets]
 
     # --- plot ---
     fig, ax = plt.subplots(figsize=(7, 5))
