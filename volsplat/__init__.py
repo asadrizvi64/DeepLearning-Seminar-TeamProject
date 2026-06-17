@@ -1,7 +1,13 @@
 from .gaussians import GaussianSet
 from .data import load_volume, save_volume, generate_phantom
-from .losses import mse_loss, psnr, mae
-from .train import train_static, train_static_projection, evaluate_full, evaluate_mae
+from .losses import mse_loss, psnr, mae, ssim3d, ssim3d_slicewise
+from .train import (
+    train_static,
+    train_static_projection,
+    evaluate_full,
+    evaluate_metrics,
+    evaluate_ssim,
+)
 from .rasterize import project_alpha_blend, gt_projection
 from .bias import bias_diagnostic, overlap_count
 from .init import init_gaussians, INIT_STRATEGIES

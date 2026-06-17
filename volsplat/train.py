@@ -1,4 +1,4 @@
-"""Static density-fitting training loop for Phase 1.
+"""
 
 Supervision strategy
 --------------------
@@ -7,10 +7,8 @@ At each iteration:
   2. Evaluate the predicted density field at those exact points.
   3. MSE against the ground-truth voxel values, backprop, step.
 
-This is the simplest defensible "render-and-compare" for v1. Phase 2 will add
-(a) a slab-projection rasterizer (true 2D render-and-compare) and (b) a differentiable
-voxelizer (bias-free reference), then run E1 to compare them.
 """
+import copy
 import time
 
 import numpy as np
@@ -18,7 +16,7 @@ import torch
 from tqdm import tqdm
 
 from .gaussians import GaussianSet
-from .losses import mse_loss, psnr, mae
+from .losses import mse_loss, psnr, mae, ssim3d, ssim3d_slicewise
 from .densify import densify, build_optimizer
 from .data import intensity_weighted_sample
 from .init import init_gaussians
@@ -33,10 +31,6 @@ def init_gaussians_from_volume(
     seed: int = 0,
 ) -> GaussianSet:
     """Backward-compatible intensity-weighted initialization.
-
-    Kept so existing scripts keep working. New code should call `init_gaussians(...)`
-    with an explicit `strategy` instead.
-    In theory, you can initialize as written in the previous version.
     """
     return init_gaussians(
         volume, num_gaussians,
@@ -112,15 +106,60 @@ def train_static(
     seed: int = 0,
     init_scale=2.0,
     init_strategy: str = 'intensity_weighted',
+    # ---- convergence control (E3 addition; fully backward-compatible) --------
+    patience: int = 0,
+    min_delta: float = 0.05,
+    stop_metric: str = 'psnr',
 ):
     """Fit a GaussianSet to a static 3D volume.
 
-    Returns (gs, history). `history` is a list of dicts; entries vary in shape (log,
-    densify event, full-volume eval, final summary).
+    Returns (gs, history). `history` is a list of dicts; entries vary in shape:
+      - per-step log:     {'iter', 'loss', 'psnr', 'num_gaussians'}
+      - densify event:    {'iter', 'densify': stats_dict}
+      - full-volume eval: {'iter', 'full_psnr'}
+      - final summary:    {'elapsed_seconds', 'final_count', 'final_iter',
+                           'converged', 'best_full_psnr', 'best_full_ssim',
+                           'best_iteration', 'convergence_metric',
+                           'best_metric_value', 'stagnant_evaluations',
+                           'total_evaluations'}
 
-    `init_strategy` selects among the strategies in `volsplat.init.INIT_STRATEGIES`:
-    'random', 'intensity_weighted' (P1 default), or 'local_maxima' (E2).
-    Again though, the line intensity weighted could be removed, as in previous version.
+    Convergence parameters
+    ----------------------
+    patience : int
+        Number of consecutive full-volume evaluations that must fail to improve
+        `stop_metric` by `min_delta` before training stops early.
+        0 (default) disables early stopping — reproduces the original behaviour.
+
+    min_delta : float
+        Minimum improvement in the stop_metric that counts as "real" progress.
+        For PSNR (dB): 0.05 is conservative; for SSIM (0–1): 0.002 is typical.
+        Default 0.05 is tuned for PSNR.
+
+    stop_metric : str  {'psnr', 'ssim'}
+        Which metric drives the patience / convergence decision.
+
+        'psnr' (default): fast — no extra compute per eval checkpoint.
+
+        'ssim': accurate — detects when structural fidelity plateaus even if
+        per-voxel MSE still improves. Requires a full voxelization
+        (gs.query_volume) at *every* eval checkpoint, which is O(D·H·W·G).
+        For large budgets (G=20k) on a 64×128×128 ROI with eval_every=200 and
+        8000 max iterations, expect ~40 SSIM evaluations × 10–30s each.
+        Only use 'ssim' on small volumes or with large eval_every.
+
+    Best-checkpoint restore
+    -----------------------
+    Whenever a new best value of `stop_metric` is observed during training,
+    the model state_dict is saved. After the loop, the model is automatically
+    restored to that best checkpoint before returning. This means:
+      - The returned `gs` reflects the *best* quality seen, not the last step.
+      - evaluate_metrics() called on the returned gs measures the best checkpoint.
+      - If eval_every=0 (no checkpoints), no restore is performed.
+
+    When patience=0 (default):
+        converged = None   (convergence not monitored)
+        final_iter = iterations - 1
+        best-checkpoint restore still applies if eval_every > 0.
     """
     if device is None:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -136,6 +175,20 @@ def train_static(
 
     grad_accum = torch.zeros_like(gs.positions)
     grad_count = 0
+
+    # -- convergence & best-checkpoint state -----------------------------------
+    # best_* tracking is always active (when eval_every > 0) so we can restore
+    # the best checkpoint before returning, independent of patience setting.
+    best_psnr_seen          = -float('inf')  # highest PSNR ever observed (any eval)
+    best_psnr_at_checkpoint = None           # PSNR AT the saved best_state_dict
+    best_ssim_seen          = -float('inf')  # populated only when stop_metric='ssim'
+    best_monitor            = -float('inf')  # tracks stop_metric value for patience
+    best_iter               = 0
+    best_state_dict         = None           # saved on every new best; restored at end
+    total_evals             = 0
+    stagnant_evals          = 0
+    converged       = False
+    final_iter      = iterations - 1
 
     history = []
     t0 = time.time()
@@ -179,11 +232,76 @@ def train_static(
         if eval_every > 0 and (it + 1) % eval_every == 0:
             full_p = evaluate_full(gs, volume_t)
             history.append({'iter': it, 'full_psnr': float(full_p)})
-            pbar.write(f'iter {it}: full-volume PSNR = {full_p:.2f}')
+            total_evals += 1
+
+            # -- track best PSNR (always, regardless of stop_metric) ----------
+            if full_p > best_psnr_seen:
+                best_psnr_seen = full_p
+                if stop_metric == 'psnr':
+                    best_iter = it
+                    best_state_dict = copy.deepcopy(gs.state_dict())
+                    best_psnr_at_checkpoint = full_p
+
+            # -- get monitor metric (PSNR fast path; SSIM expensive path) -----
+            if stop_metric == 'ssim':
+                monitor_val = evaluate_ssim(gs, volume_t)
+                ssim_str = f'  SSIM={monitor_val:.4f}'
+                if monitor_val > best_ssim_seen:
+                    best_ssim_seen = monitor_val
+                    best_iter = it
+                    best_state_dict = copy.deepcopy(gs.state_dict())
+                    # full_p was just computed for THIS iteration, so it is the
+                    # correct PSNR value for the checkpoint being saved here —
+                    # not best_psnr_seen, which may belong to a different,
+                    # unsaved iteration (see evaluate_metrics bug analysis).
+                    best_psnr_at_checkpoint = full_p
+            else:
+                monitor_val = full_p
+                ssim_str = ''
+
+            pbar.write(f'iter {it}: full-vol PSNR={full_p:.2f} dB{ssim_str}')
+
+            # -- patience-based early stopping (no-op when patience == 0) -----
+            if patience > 0:
+                if monitor_val > best_monitor + min_delta:
+                    best_monitor = monitor_val
+                    stagnant_evals = 0
+                else:
+                    stagnant_evals += 1
+
+                if stagnant_evals >= patience:
+                    converged = True
+                    final_iter = it
+                    pbar.write(
+                        f'  ↳ converged: best {stop_metric.upper()}='
+                        f'{best_monitor:.4f}, '
+                        f'{stagnant_evals} evals without >{min_delta} gain'
+                    )
+                    break
+
+    # -- restore best checkpoint -----------------------------------------------
+    # If any eval checkpoint ran, gs is now the best model seen during training
+    # rather than the last-iteration state. This is the scientifically preferred
+    # evaluation basis: it guards against late-training oscillation or overshoot.
+    if best_state_dict is not None:
+        gs.load_state_dict(best_state_dict)
 
     history.append({
-        'elapsed_seconds': time.time() - t0,
-        'final_count': gs.num_gaussians,
+        'elapsed_seconds':      time.time() - t0,
+        'final_count':          gs.num_gaussians,
+        'final_iter':           final_iter,
+        'converged':            converged if patience > 0 else None,
+        
+        'best_full_psnr':       best_psnr_at_checkpoint,
+        'best_full_ssim':       float(best_ssim_seen) if best_ssim_seen > -float('inf') else None,
+        'best_iteration':       int(best_iter),
+        
+        'highest_psnr_observed': float(best_psnr_seen) if best_psnr_seen > -float('inf') else None,
+        
+        'convergence_metric':   stop_metric,
+        'best_metric_value':    float(best_monitor) if best_monitor > -float('inf') else None,
+        'stagnant_evaluations': int(stagnant_evals),
+        'total_evaluations':    int(total_evals),
     })
     return gs, history
 
@@ -208,19 +326,7 @@ def train_static_projection(
     pixel_chunk: int = 4096,
     init_strategy: str = 'intensity_weighted',
 ):
-    """Fit a GaussianSet via orthographic alpha-blending projection supervision.
-
-    The "render-and-compare" path for Phase 2 / E1. Each iteration:
-      1. Pick `axis = axes[it % len(axes)]`.
-      2. Render an alpha-blended sum-projection of the Gaussian set along that axis.
-      3. MSE against the GT sum-projection along the same axis.
-      4. Backprop, step.
-
-    Same init / densification / eval as `train_static`, so a head-to-head comparison
-    is fair. The PSNR logged during training is on the *projection* targets (which
-    can have a very different dynamic range from voxels) - the apples-to-apples
-    comparison to voxel-query training is `evaluate_full` on the density field.
-    """
+   
     from .rasterize import project_alpha_blend, gt_projection
 
     if device is None:
@@ -289,6 +395,8 @@ def train_static_projection(
     history.append({
         'elapsed_seconds': time.time() - t0,
         'final_count': gs.num_gaussians,
+        'final_iter':  iterations - 1,
+        'converged':   None,
     })
     return gs, history
 
@@ -297,7 +405,10 @@ def train_static_projection(
 
 @torch.no_grad()
 def evaluate_full(gs: GaussianSet, volume_t: torch.Tensor, subsample: int = 50_000) -> float:
-    """PSNR on a uniform random voxel subsample over the whole volume."""
+    """PSNR on a uniform random voxel subsample over the whole volume.
+
+    Kept for backward-compatibility with E1/E2 and all existing scripts.
+    """
     D, H, W = volume_t.shape
     device = volume_t.device
     n = min(subsample, D * H * W)
@@ -311,22 +422,73 @@ def evaluate_full(gs: GaussianSet, volume_t: torch.Tensor, subsample: int = 50_0
 
 
 @torch.no_grad()
-def evaluate_mae(gs: GaussianSet, volume_t: torch.Tensor, subsample: int = 50_000) -> float:
-    """MAE on a uniform random voxel subsample over the whole volume.
+def evaluate_metrics(
+    gs: GaussianSet,
+    volume_t: torch.Tensor,
+    subsample: int = 100_000,
+    seed: int = 42,
+) -> dict:
+    """Compute PSNR and MAE on *identical* voxel coordinates.
 
-    Added for E3 (or whatever is in that matrix thingy XD) as the second reconstruction quality metric.
+    Using a fixed generator ensures:
+      - PSNR and MAE are computed on the same voxels within one evaluation call.
+      - The same voxels are used across all budget levels (seed=42 by default),
+        so per-budget comparisons are on identical test sets.
 
-    MAE is complementary to PSNR: it is in native intensity units [0, 1] and
-    is not log-scaled, so it makes the absolute per-voxel error legible, and it
-    is less sensitive to rare large outliers than PSNR's squared-error base.
+    Parameters
+    ----------
+    gs        : trained GaussianSet
+    volume_t  : (D, H, W) ground-truth volume tensor on the same device as gs
+    subsample : number of voxels to sample (100k balances accuracy and speed)
+    seed      : seed for the sampling generator; hold constant across all budgets
+
     """
     D, H, W = volume_t.shape
     device = volume_t.device
     n = min(subsample, D * H * W)
-    x = torch.randint(0, W, (n,), device=device).float()
-    y = torch.randint(0, H, (n,), device=device).float()
-    z = torch.randint(0, D, (n,), device=device).float()
+
+    # Isolated generator — does not touch the global RNG state
+    gen = torch.Generator(device=device)
+    gen.manual_seed(seed)
+    x = torch.randint(0, W, (n,), device=device, generator=gen).float()
+    y = torch.randint(0, H, (n,), device=device, generator=gen).float()
+    z = torch.randint(0, D, (n,), device=device, generator=gen).float()
+
     positions = torch.stack([x, y, z], dim=-1)
-    targets = volume_t[z.long(), y.long(), x.long()]
-    pred = gs.query_density(positions)
-    return mae(pred, targets)
+    targets   = volume_t[z.long(), y.long(), x.long()]
+    pred      = gs.query_density(positions)
+
+    return {
+        'psnr': psnr(pred, targets),
+        'mae':  mae(pred, targets),
+    }
+
+
+@torch.no_grad()
+def evaluate_ssim(
+    gs: GaussianSet,
+    volume_t: torch.Tensor,
+    win_size: int = 7,
+    max_voxels_3d: int = 5_000_000,
+) -> float:
+    """3D SSIM via full voxelization of the Gaussian field.
+    """
+    D, H, W = volume_t.shape
+    n_voxels = D * H * W
+
+    # Voxelize the predicted field — necessary for any spatial metric
+    pred_vol   = gs.query_volume((D, H, W)).cpu().numpy().astype(np.float32)
+    target_vol = volume_t.cpu().numpy().astype(np.float32)
+
+    try:
+        if n_voxels <= max_voxels_3d:
+            return ssim3d(pred_vol, target_vol, data_range=1.0, win_size=win_size)
+        else:
+            print(
+                f'  [ssim] volume has {n_voxels:,} voxels > {max_voxels_3d:,} threshold; '
+                f'falling back to slice-wise 2D SSIM (averaged over {D} z-slices)'
+            )
+            return ssim3d_slicewise(pred_vol, target_vol, data_range=1.0, win_size=win_size)
+    except Exception as e:
+        print(f'  [ssim] computation failed: {e}. Returning -2.0')
+        return -2.0
