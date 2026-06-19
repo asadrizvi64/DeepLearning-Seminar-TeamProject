@@ -5,10 +5,12 @@
 # MUST load modules before activating venv (fixes libpython3.11.so error):
 #   bash scripts/hpc/run_compare_fit.sh
 
-set -euo pipefail
-
+set -eo pipefail
+export LD_PRELOAD="${LD_PRELOAD:-}"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
 module purge
 module load release/24.04 GCCcore/12.3.0 Python/3.11.3
+set -u
 source "${VENV_DIR:-$HOME/volsplat-venv}/bin/activate"
 
 cd /projects/p_scads_mlhpc/DeepLearning-Seminar-TeamProject

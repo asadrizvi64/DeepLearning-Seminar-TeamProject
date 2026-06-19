@@ -19,11 +19,14 @@
 #SBATCH --time=02:00:00
 #SBATCH --output=/tmp/%x_%j.out
 
-set -euo pipefail
+set -eo pipefail
+export LD_PRELOAD="${LD_PRELOAD:-}"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
 
 mkdir -p logs
 module purge
 module load release/24.04 GCCcore/12.3.0 Python/3.11.3
+set -u
 source "${VENV_DIR:-$HOME/volsplat-venv}/bin/activate"
 
 WS="$(ws_find volsplat)"
@@ -35,10 +38,16 @@ mkdir -p "$WS/logs" "$WS/runs/ctc_temporal"
 DRO_ROOT="${DRO_ROOT:-$WS/Fluo-N3DL-DRO}"
 REPO=/projects/p_scads_mlhpc/DeepLearning-Seminar-TeamProject
 
+# Count available frames so the job works with 1 or more frames in the workspace
+N_FRAMES=$(ls "$DRO_ROOT/01/t"*.tif 2>/dev/null | wc -l)
+N_FRAMES=$(( N_FRAMES > 4 ? 4 : N_FRAMES ))
+N_FRAMES=$(( N_FRAMES < 1 ? 1 : N_FRAMES ))
+echo "Found $N_FRAMES frame(s) in $DRO_ROOT/01/"
+
 python "$REPO/scripts/train_temporal_ctc.py" \
     --root "$DRO_ROOT" \
     --sequence 01 \
-    --frames 4 \
+    --frames "$N_FRAMES" \
     --target-shape 24 64 64 \
     --num-gaussians 1500 \
     --iters-first 1500 \
