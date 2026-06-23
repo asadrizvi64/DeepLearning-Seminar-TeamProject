@@ -71,41 +71,81 @@ function sprite(){
 }
 const TEX = null;
 
+// Vertex shader: per-Gaussian point size from scale attribute
+const _VS = `
+  attribute float splatSize;
+  attribute vec4 splatColor;
+  varying vec4 vCol;
+  uniform float uScale;
+  void main(){
+    vCol = splatColor;
+    vec4 mv = modelViewMatrix * vec4(position,1.0);
+    // world-space scale → screen pixels, min 3px so tiny Gaussians stay visible
+    gl_PointSize = max(3.0, splatSize * uScale * 400.0 / -mv.z);
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+// Fragment shader: Gaussian radial falloff → soft blob, not hard circle
+const _FS = `
+  varying vec4 vCol;
+  void main(){
+    float d = length(gl_PointCoord - vec2(0.5));
+    if(d > 0.5) discard;
+    float alpha = exp(-d*d*10.0) * vCol.a * 2.5;  // *2.5 brightens faint grayscale
+    gl_FragColor = vec4(vCol.rgb * 1.8, alpha);    // boost grey nuclei on dark bg
+  }
+`;
+
 function parseSplat(buf){
   const n = Math.floor(buf.byteLength / SP);
   const dv = new DataView(buf);
-  const pos = new Float32Array(n*3), col = new Float32Array(n*3);
+  const pos = new Float32Array(n*3);
+  const col = new Float32Array(n*4);   // rgba
+  const sz  = new Float32Array(n);     // scale magnitude per Gaussian
   let cx=0,cy=0,cz=0;
   for(let i=0;i<n;i++){
     const o=i*SP;
     const x=dv.getFloat32(o,true), y=dv.getFloat32(o+4,true), z=dv.getFloat32(o+8,true);
     pos[i*3]=x; pos[i*3+1]=y; pos[i*3+2]=z; cx+=x; cy+=y; cz+=z;
-    col[i*3]=dv.getUint8(o+24)/255; col[i*3+1]=dv.getUint8(o+25)/255; col[i*3+2]=dv.getUint8(o+26)/255;
+    // bytes 12-23: 3×float32 scale — use RMS magnitude
+    const sx=dv.getFloat32(o+12,true), sy=dv.getFloat32(o+16,true), scz=dv.getFloat32(o+20,true);
+    sz[i] = Math.sqrt((sx*sx+sy*sy+scz*scz)/3);
+    // bytes 24-27: rgba uint8
+    col[i*4  ]=dv.getUint8(o+24)/255;
+    col[i*4+1]=dv.getUint8(o+25)/255;
+    col[i*4+2]=dv.getUint8(o+26)/255;
+    col[i*4+3]=dv.getUint8(o+27)/255;
   }
   cx/=n; cy/=n; cz/=n;
-  // recenter + scale to a unit-ish box for viewing
-  let r=0; for(let i=0;i<n;i++){const dx=pos[i*3]-cx,dy=pos[i*3+1]-cy,dz=pos[i*3+2]-cz;
-    r=Math.max(r, Math.hypot(dx,dy,dz));}
-  r = r||1;
-  for(let i=0;i<n;i++){pos[i*3]=(pos[i*3]-cx)/r; pos[i*3+1]=(pos[i*3+1]-cy)/r; pos[i*3+2]=(pos[i*3+2]-cz)/r;}
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
-  geo.setAttribute('color', new THREE.BufferAttribute(col,3));
-  geo.userData.count = n;
+  let r=0;
+  for(let i=0;i<n;i++){const dx=pos[i*3]-cx,dy=pos[i*3+1]-cy,dz=pos[i*3+2]-cz;
+    r=Math.max(r,Math.hypot(dx,dy,dz));}
+  r=r||1;
+  for(let i=0;i<n;i++){
+    pos[i*3]=(pos[i*3]-cx)/r; pos[i*3+1]=(pos[i*3+1]-cy)/r; pos[i*3+2]=(pos[i*3+2]-cz)/r;
+    sz[i]/=r;   // scale to same world-unit space as positions
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',  new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('splatColor',new THREE.BufferAttribute(col,4));
+  geo.setAttribute('splatSize', new THREE.BufferAttribute(sz,1));
+  geo.userData.count=n;
   return geo;
 }
 
 function showFrame(i){
   if(!frames.length) return;
-  curFrame = Math.max(0, Math.min(frames.length-1, i));
+  curFrame=Math.max(0,Math.min(frames.length-1,i));
   if(cloud) scene.remove(cloud);
-  const mat = new THREE.PointsMaterial({size:0.03*ptSize, vertexColors:true,
-    map:sprite(), transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
-    sizeAttenuation:true});
-  cloud = new THREE.Points(frames[curFrame].geometry, mat);
+  const mat=new THREE.ShaderMaterial({
+    uniforms:{uScale:{value:ptSize}},
+    vertexShader:_VS, fragmentShader:_FS,
+    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending
+  });
+  cloud=new THREE.Points(frames[curFrame].geometry,mat);
   scene.add(cloud);
-  document.getElementById('frameLbl').textContent = curFrame;
-  document.getElementById('stat').textContent =
+  document.getElementById('frameLbl').textContent=curFrame;
+  document.getElementById('stat').textContent=
     `${frames[curFrame].name}: ${frames[curFrame].geometry.userData.count.toLocaleString()} splats`;
 }
 

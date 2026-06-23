@@ -61,11 +61,22 @@ def main():
     vol = load_ctc_frame(args.root, args.sequence, args.frame, normalize=True)
     print(f'  shape (D,H,W) = {vol.shape},  range = [{vol.min():.3f}, {vol.max():.3f}]')
 
-    # Crop
+    # Crop — anchor z at the TOP surface of the bright bbox (blastoderm pole),
+    # not the bbox centre (which is the empty interior for hollow-sphere embryos).
     if args.crop:
-        bbox = find_intensity_bbox(vol)
+        bbox_full = find_intensity_bbox(vol)
         if args.target_shape is not None:
-            bbox = center_roi(bbox, tuple(args.target_shape), vol.shape)
+            D, H, W = vol.shape
+            tz, ty, tx = args.target_shape
+            z_s = max(0, bbox_full[0].start)
+            z_e = min(D, z_s + tz); z_s = max(0, z_e - tz)
+            y_c = (bbox_full[1].start + bbox_full[1].stop) // 2
+            x_c = (bbox_full[2].start + bbox_full[2].stop) // 2
+            y_s = max(0, min(H - ty, y_c - ty // 2))
+            x_s = max(0, min(W - tx, x_c - tx // 2))
+            bbox = (slice(z_s, z_s + tz), slice(y_s, y_s + ty), slice(x_s, x_s + tx))
+        else:
+            bbox = bbox_full
         vol = vol[bbox]
         print(f'  cropped to    = {vol.shape}')
 

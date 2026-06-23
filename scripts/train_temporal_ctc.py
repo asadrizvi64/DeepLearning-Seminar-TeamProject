@@ -38,8 +38,22 @@ def main():
     out = Path(args.out_dir); out.mkdir(parents=True, exist_ok=True)
 
     # Fix one ROI from the first frame, apply it to all frames (consistent crop).
+    # For a HOLLOW blastoderm shell, find_intensity_bbox spans the whole embryo and
+    # center_roi would land in the empty interior.  Instead, anchor z at the TOP of
+    # the bright region (the surface pole) and centre only y/x on the embryo centre.
     f0 = load_ctc_frame(args.root, args.sequence, args.start, normalize=True)
-    bbox = center_roi(find_intensity_bbox(f0), tuple(args.target_shape), f0.shape)
+    bbox_full = find_intensity_bbox(f0)
+    D, H, W = f0.shape
+    tz, ty, tx = args.target_shape
+    # z: top pole of the shell (z_start of the bright bbox)
+    z_s = max(0, bbox_full[0].start)
+    z_e = min(D, z_s + tz); z_s = max(0, z_e - tz)
+    # y, x: centre on the embryo centre (bbox midpoint)
+    y_c = (bbox_full[1].start + bbox_full[1].stop) // 2
+    x_c = (bbox_full[2].start + bbox_full[2].stop) // 2
+    y_s = max(0, min(H - ty, y_c - ty // 2))
+    x_s = max(0, min(W - tx, x_c - tx // 2))
+    bbox = (slice(z_s, z_s + tz), slice(y_s, y_s + ty), slice(x_s, x_s + tx))
     vols = []
     for i in range(args.frames):
         v = load_ctc_frame(args.root, args.sequence, args.start + i, normalize=True)
