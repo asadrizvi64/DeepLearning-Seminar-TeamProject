@@ -1,0 +1,36 @@
+{
+  "config": {
+    "root": "D:/Download/train/Fluo-N3DL-DRO (1)/Fluo-N3DL-DRO",
+    "sequence": "01",
+    "frames": 3,
+    "start": 0,
+    "target_shape": [
+      12,
+      24,
+      24
+    ],
+    "num_gaussians": 300,
+    "iters_first": 600,
+    "iters_warm": 150,
+    "out_dir": "runs/ctc_temporal",
+    "seed": 0
+  },
+  "per_frame_psnr": [
+    29.155244983376186,
+    34.193955230215856,
+    34.605986611645456
+  ],
+  "temporal_smoothness": 0.07210186123847961,
+  "consistency": [
+    28.90947345180794,
+    33.490725892070266
+  ],
+  "roi": [
+    56,
+    315,
+    599,
+    68,
+    339,
+    623
+  ]
+}

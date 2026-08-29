@@ -1,0 +1,35 @@
+
+=== z0y528x144: 30 nuclei, K=250, nucleus voxels 4.9% of volume ===
+  radius   3 vox: OBJECT= 30  SUPPORT=220  mass_obj=0.17  nuclei with >=1: 30/30  >=2:  0  median n_j=1.0  max=1
+  radius   5 vox: OBJECT= 31  SUPPORT=219  mass_obj=0.17  nuclei with >=1: 30/30  >=2:  1  median n_j=1.0  max=2
+  radius   8 vox: OBJECT= 44  SUPPORT=206  mass_obj=0.18  nuclei with >=1: 30/30  >=2:  9  median n_j=1.0  max=4
+    all           n=250  global= 24.49  nucleus= 24.12  bg= 24.51  F1=0.656
+    object_only   n= 31  global=  4.57  nucleus=  5.48  bg=  4.52  F1=0.378
+    support_only  n=219  global= 17.20  nucleus= 12.19  bg= 17.71  F1=0.087
+
+=== z0y624x144: 33 nuclei, K=250, nucleus voxels 5.1% of volume ===
+  radius   3 vox: OBJECT= 33  SUPPORT=217  mass_obj=0.10  nuclei with >=1: 33/33  >=2:  0  median n_j=1.0  max=1
+  radius   5 vox: OBJECT= 33  SUPPORT=217  mass_obj=0.10  nuclei with >=1: 33/33  >=2:  0  median n_j=1.0  max=1
+  radius   8 vox: OBJECT= 39  SUPPORT=211  mass_obj=0.15  nuclei with >=1: 33/33  >=2:  5  median n_j=1.0  max=3
+    all           n=250  global= 24.62  nucleus= 24.26  bg= 24.64  F1=0.645
+    object_only   n= 33  global=  4.51  nucleus=  5.40  bg=  4.47  F1=0.167
+    support_only  n=217  global= 19.32  nucleus= 13.68  bg= 19.99  F1=0.038
+
+=== ROLE ABLATION (mean over regions, radius 5 vox) ===
+population         n   global  nucleus  backgnd     F1   mass
+all              250    24.56    24.19    24.58  0.650   1.00
+object_only       32     4.54     5.44     4.50  0.273   0.13
+support_only     218    18.26    12.94    18.85  0.063   0.87
+
+=== PREMISE CHECK: Gaussians per nucleus (radius 5 vox) ===
+  nuclei with 0: 0   1: 62   2: 1   3+: 0
+  median over covered nuclei: 1.0  mean: 1.02  max: 2
+
+=== THRESHOLD STABILITY ===
+        n_object  mass_object  median_nj  max_nj
+radius                                          
+3.0         31.5        0.133        1.0       1
+5.0         32.0        0.133        1.0       2
+8.0         41.5        0.163        1.0       4
+
+Outputs -> E:\masters\MLCV seminar\TeamProject\runs\gaussian_roles

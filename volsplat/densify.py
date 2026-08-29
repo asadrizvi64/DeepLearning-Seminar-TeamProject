@@ -16,14 +16,40 @@ def build_optimizer(
     lr_scale: float = 0.005,
     lr_rotation: float = 0.001,
     lr_amp: float = 0.05,
+    parameterization: str = 'full',
 ) -> torch.optim.Adam:
-    """Adam optimizer with per-parameter learning rates following 3DGS conventions."""
-    return torch.optim.Adam([
-        {'params': [gs.positions],   'lr': lr_position, 'name': 'positions'},
-        {'params': [gs.log_scales],  'lr': lr_scale,    'name': 'log_scales'},
-        {'params': [gs.quaternions], 'lr': lr_rotation, 'name': 'quaternions'},
-        {'params': [gs.amp_logits],  'lr': lr_amp,      'name': 'amp_logits'},
-    ])
+    """Adam optimizer with per-parameter learning rates following 3DGS conventions.
+
+    `parameterization` controls which parameter groups are trainable:
+      * 'full'      - position, scales (3), rotation, amplitude  (10 DOF/Gaussian)
+      * 'diagonal'  - position, scales (3), amplitude; rotation frozen at identity
+      * 'isotropic' - position, scale, amplitude; rotation frozen, scales tied
+                      (tying is enforced by `project_parameterization` post-step)
+    """
+    if parameterization not in ('full', 'diagonal', 'isotropic'):
+        raise ValueError(f"Unknown parameterization {parameterization!r}")
+    groups = [
+        {'params': [gs.positions],  'lr': lr_position, 'name': 'positions'},
+        {'params': [gs.log_scales], 'lr': lr_scale,    'name': 'log_scales'},
+        {'params': [gs.amp_logits], 'lr': lr_amp,      'name': 'amp_logits'},
+    ]
+    if parameterization == 'full':
+        groups.insert(2, {'params': [gs.quaternions], 'lr': lr_rotation, 'name': 'quaternions'})
+    return torch.optim.Adam(groups)
+
+
+@torch.no_grad()
+def project_parameterization(gs: GaussianSet, parameterization: str) -> None:
+    """Project the Gaussian parameters back onto the manifold for `parameterization`.
+
+    Call once after each optimizer step. For 'isotropic', tie the 3 log-scales to
+    their per-Gaussian mean so every Gaussian stays a sphere. 'diagonal' and 'full'
+    are no-ops (rotation is simply excluded from the optimizer for 'diagonal').
+    """
+    if parameterization == 'isotropic':
+        gs.log_scales.data.copy_(
+            gs.log_scales.data.mean(dim=1, keepdim=True).expand_as(gs.log_scales)
+        )
 
 
 @torch.no_grad()

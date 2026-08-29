@@ -1,0 +1,479 @@
+\documentclass[11pt,a4paper]{article}
+
+% ---------- Packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{makecell}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{titlesec}
+
+% ---------- Page setup ----------
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!60!black,
+    urlcolor=blue!60!black,
+    citecolor=blue!60!black
+}
+
+\setlist[itemize]{leftmargin=1.5em}
+\setlength{\parskip}{0.6em}
+\setlength{\parindent}{0pt}
+
+% ---------- Custom commands ----------
+\newcommand{\done}{\textcolor{green!45!black}{\(\checkmark\) Complete}}
+\newcommand{\pending}{\textcolor{orange!80!black}{Pending}}
+\newcommand{\phantomcomplete}{\textcolor{green!45!black}{\(\checkmark\) Complete}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\psnr}{\mathrm{PSNR}}
+\newcommand{\ssim}{\mathrm{SSIM}}
+
+\titleformat{\section}{\large\bfseries}{\thesection}{0.7em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.7em}{}
+
+% ---------- Title ----------
+\title{\textbf{3D Gaussian Splatting for Volumetric Fluorescence Microscopy}\\
+\large Progress Report --- June 2026}
+
+\author{
+Prepared by: Syed Muhammad Asad\\
+MLCV Seminar, TU Dresden\\
+Repository: \code{asadrizvi64/DeepLearning-Seminar-TeamProject}, branch: \code{main}
+}
+
+\date{Report generated: 24 June 2026}
+
+\begin{document}
+
+\maketitle
+
+\section*{Executive Summary}
+
+This project investigates whether 3D Gaussian Splatting (3DGS), a representation
+developed for real-time novel-view synthesis of natural scenes, can serve as a
+compact and editable model for volumetric fluorescence microscopy. All core
+pipeline phases are implemented and verified on synthetic phantom data. This week,
+the pipeline was advanced to \emph{real} data: a single embryo frame and a short
+time series from the Fluo-N3DL-DRO \emph{Drosophila} light-sheet dataset were fitted
+on the TU Dresden Alpha HPC cluster using an A100 GPU.
+
+The headline event of this reporting period was the discovery and correction of a
+\textbf{region-of-interest (ROI) extraction bug} that had caused the earlier real-data
+fit to model the empty interior of the embryo rather than its nucleus-bearing surface.
+After the fix, the corrected runs now resolve individual nuclei, which is consistent
+with the reference visualisation in Napari. A secondary rendering artifact (a small
+number of oversized ``floater'' Gaussians) was also identified and removed. One
+quantitative metric, the structural-similarity index (SSIM) for the 40{,}000-Gaussian
+GPU fit, remains outstanding for a purely computational reason explained in
+Section~\ref{sec:outstanding}.
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabularx}{\textwidth}{@{}p{0.30\textwidth}p{0.18\textwidth}X@{}}
+\toprule
+\textbf{Phase} & \textbf{Status} & \textbf{Key Result} \\
+\midrule
+P0 -- Environment \& infrastructure & \done & Virtual environment, SLURM scripts, and CI configured \\
+P1 -- Phantom pipeline, E1--E3 & \done & Voxel-query \(\psnr = 31.7\) dB; E1 confirms alpha-blend bias \\
+P2 -- Initialisation study, E2 & \done & Intensity-weighted initialisation converges fastest \\
+P3 -- Fidelity/storage Pareto, E5 & \done & 3DGS reaches \(38.6\) dB at \(6.2\) KB on phantom data \\
+P4 -- Export \& viewer, E6 & \done & \code{.ply}/\code{.splat} export and WebGL 3D+t viewer implemented \\
+P5 -- Temporal, E7, phantom & \phantomcomplete & Shared-identity \(39.3\) dB vs.\ native-4D \(25.9\) dB \\
+P5 -- Real-data temporal, cluster & \done & Corrected fit: per-frame \(30.1\)/\(32.0\)/\(32.2\) dB; nuclei resolved \\
+GPU static fit, corrected ROI & \done & \(28.71\) dB on surface-nuclei ROI (40k Gaussians) \\
+GPU static fit, SSIM metric & \pending & Blocked by CPU cost of full-volume query; see Sec.~\ref{sec:outstanding} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Background and Motivation}
+
+\textbf{What is 3D Gaussian Splatting?}
+A scene is represented as a set of anisotropic 3D Gaussians, each carrying a centre
+position, a \(3\times3\) covariance (parameterised here by a log-scale vector and a
+rotation quaternion), and an amplitude. The continuous density at any point is the sum
+of the Gaussians evaluated at that point. Because the representation is differentiable,
+the Gaussians' parameters can be optimised by gradient descent to match a target signal.
+
+\textbf{Why apply it to microscopy?}
+A light-sheet microscopy volume is a dense 3D scalar field (fluorophore intensity).
+Stored na\"ively it is large; a typical Fluo-N3DL-DRO frame is roughly \(96\) million
+voxels. A Gaussian mixture promises three advantages: (i) \emph{compression}, since a
+few thousand Gaussians can summarise a structured volume; (ii) an \emph{explicit,
+editable} geometric model in which each Gaussian can plausibly correspond to a nucleus,
+which is useful for tracking; and (iii) a path to \emph{continuous-time} (3D+t)
+representations that interpolate between acquired frames.
+
+\textbf{The central technical question} addressed early in the project (experiment E1)
+is whether the rendering formula matters. Standard 3DGS composites Gaussians by
+alpha-blending along camera rays, which is correct for opaque surfaces but, as shown
+below, is biased for a transparent density field. The project therefore supervises the
+fit by directly querying the density at voxel centres rather than by alpha-compositing.
+
+\section{Completed Experiments (Synthetic Phantom)}
+
+The phantom is a controlled volume of Gaussian ``blobs'' with known positions, scales,
+and (for the 4D phantom) known motion. It lets us validate correctness and measure
+behaviour against ground truth before touching noisy real data.
+
+\subsection{E1 --- Integration Bias Analysis}
+
+\textbf{Objective.}
+Determine whether alpha-compositing, the standard real-time 3DGS rendering formulation,
+introduces reconstruction bias when applied to a volumetric density field.
+
+\textbf{Why a bias is expected.}
+Alpha-compositing assumes each Gaussian \emph{occludes} those behind it: contributions
+are attenuated by an accumulated transmittance term. For a genuinely transparent
+emission field the physically correct operation is a plain \emph{sum} (line integral)
+of densities, with no occlusion. When Gaussians overlap, the occlusion term
+systematically removes signal that should have been added, so the error grows with
+overlap.
+
+\textbf{Finding.}
+Voxel-query supervision, which evaluates the unbiased ground-truth density, achieves
+\(31.7\) dB on the 15-blob phantom. The same fitted model, when scored through
+alpha-compositing, collapses to \(-7.1\) dB --- a \(38.8\) dB gap. The bias increases
+monotonically with Gaussian overlap. This is the empirical justification for using a
+voxel-query loss throughout the project rather than the alpha-blend loss inherited from
+scene reconstruction.
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{@{}lc@{}}
+\toprule
+\textbf{Supervision / scoring mode} & \textbf{Final PSNR} \\
+\midrule
+Voxel-query (unbiased)        & \(31.7\) dB \\
+Alpha-blend projection        & \(-7.1\) dB (diverged) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{E2 --- Initialisation Strategies}
+
+Three ways of placing the initial Gaussians were benchmarked to a \(25\) dB target on
+the 15-blob phantom (500 Gaussians, 1000 iterations):
+
+\begin{itemize}
+    \item \textbf{Random uniform:} Gaussians scattered uniformly. Slowest convergence
+    and highest variance across random seeds, because many Gaussians start far from any
+    signal and waste iterations migrating inward.
+    \item \textbf{Intensity-weighted sampling:} initial centres are drawn with
+    probability proportional to local intensity, so Gaussians begin near real structure.
+    Fastest and most stable; \textbf{selected as the default}.
+    \item \textbf{Local-maxima seeding:} one Gaussian per detected intensity peak. Fast
+    when the peak count matches the true blob count, but brittle when it underestimates
+    the number of nuclei (peaks merge and structure is missed).
+\end{itemize}
+
+\subsection{E5 --- Fidelity / Storage Pareto Curve}
+
+Four representations were swept across storage budgets on the 10-blob phantom, to place
+3DGS on a fidelity-versus-size trade-off curve against the natural alternatives. The
+3DGS budgets were corrected this period to blob-count-appropriate sizes (5--100
+Gaussians); earlier runs used 200--2000 Gaussians, which over-crowded the 10-blob
+phantom and (counter-intuitively) \emph{lowered} quality, since surplus Gaussians
+compete to explain the same blob and add high-frequency noise.
+
+\begin{table}[h!]
+\centering
+\scriptsize
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{}p{0.22\textwidth}XXXXX@{}}
+\toprule
+\textbf{Method} & \textbf{5 units} & \textbf{10 units} & \textbf{20 units} & \textbf{50 units} & \textbf{100 units} \\
+\midrule
+Compressed voxels &
+\makecell{\(26.1\) dB\\\(0.9\) KB} & \makecell{\(32.3\) dB\\\(1.6\) KB} &
+\makecell{\(38.1\) dB\\\(2.4\) KB} & \makecell{\(48.6\) dB\\\(5.3\) KB} &
+\makecell{\(54.8\) dB\\\(9.4\) KB} \\
+Sparse point cloud &
+\makecell{\(24.0\) dB\\\(4.1\) KB} & \makecell{\(29.9\) dB\\\(7.9\) KB} &
+\makecell{\(36.3\) dB\\\(11.7\) KB} & \makecell{\(43.6\) dB\\\(15.7\) KB} &
+\makecell{\(51.4\) dB\\\(20.5\) KB} \\
+Implicit field (MLP) &
+\makecell{\(28.5\) dB\\\(1.2\) KB} & \makecell{\(41.7\) dB\\\(4.4\) KB} &
+\makecell{\(45.1\) dB\\\(9.7\) KB} & \makecell{\(48.0\) dB\\\(16.9\) KB} & -- \\
+3DGS (this work) &
+\makecell{\(18.4\) dB\\\(2.0\) KB} & \makecell{\(21.2\) dB\\\(2.2\) KB} &
+\makecell{\(24.9\) dB\\\(2.7\) KB} & \makecell{\(37.0\) dB\\\(4.0\) KB} &
+\makecell{\(38.6\) dB\\\(6.2\) KB} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Observation.}
+On this \emph{sparse} synthetic phantom, compressed voxels dominate because almost the
+entire volume is empty and compresses trivially; 3DGS carries a fixed per-Gaussian
+overhead (position, scale, rotation, amplitude $=$ 11 floats) that is not amortised when
+there are few blobs. The phantom is therefore a near-worst case for 3DGS. On real,
+\emph{dense} data, where structure fills the volume and anisotropic Gaussians can each
+cover an elongated nucleus, 3DGS is expected to be far more competitive --- which is
+precisely what the real-data experiments in Section~\ref{sec:realdata} begin to probe.
+
+\subsection{E6 --- Export and WebGL Viewer}
+
+A complete export and visualisation pipeline was implemented:
+
+\begin{itemize}
+    \item \textbf{INRIA-3DGS PLY} (17 float properties per Gaussian) for compatibility
+    with external tools such as SuperSplat and \code{gsplat.js}.
+    \item \textbf{\code{antimatter15} \code{.splat}} binary (32 bytes per Gaussian:
+    position, scale, RGBA, rotation) for the in-house viewer.
+    \item \textbf{Round-trip fidelity} verified: geometry survives export and re-import
+    exactly within float32 precision.
+\end{itemize}
+
+The viewer (\code{viewer/index.html}) accepts drag-and-drop of multiple \code{t*.splat}
+frames and provides a slider for 3D+t scrubbing. It renders each Gaussian with a custom
+\code{ShaderMaterial}: the vertex shader sizes each point from its own scale attribute,
+and the fragment shader applies a radial Gaussian falloff,
+\(\exp(-d^2 \times 10)\), so each splat appears as a soft blob rather than a hard disc.
+
+\subsection{E7 --- Temporal Representation Comparison (Phantom)}
+
+Three ways of representing a moving volume over time were benchmarked on the 4D phantom
+(12 blobs, 8 frames, smooth motion, and a cell-division event at frame~4):
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabularx}{\textwidth}{@{}p{0.31\textwidth}cccc@{}}
+\toprule
+\textbf{Variant} & \textbf{Mean PSNR} & \textbf{Params} & \textbf{Storage} & \textbf{Interpolation} \\
+\midrule
+Shared-identity (per-frame fit) & \(39.3\) dB & 13{,}200 & \(O(T \times N)\) & No (discrete frames) \\
+Native-4D (\(t_{\mathrm{center}}/t_{\mathrm{scale}}\)) & \(25.9\) dB & 3{,}900 & \(O(N)\) & Yes, \(20.1\)--\(21.9\) dB \\
+Deformation field (polynomial) & \(22.8\) dB & 5{,}100 & \(O(N)\) & Yes, \(18.5\)--\(20.4\) dB \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Interpretation of the three variants.}
+\emph{Shared-identity} fits one Gaussian set per frame, warm-started from the previous
+frame so a given Gaussian keeps its identity over time (useful for tracking). It is the
+most faithful but stores \(T\) frames' worth of parameters. \emph{Native-4D} adds a time
+centre and extent to each Gaussian, so one parameter set covers the whole sequence and
+can be sampled at any continuous \(t\). \emph{Deformation} keeps a canonical Gaussian set
+and moves it with a low-order polynomial motion model. Shared-identity leads per-frame
+fidelity by \(13.4\) dB but uses \(3.4\times\) more storage and cannot interpolate
+between frames; the other two trade fidelity for an \(O(N)\) size and true continuous-time
+rendering. The right choice depends on the downstream task (archival fidelity versus
+sub-frame tracking).
+
+\section{Real-Data Experiments --- Fluo-N3DL-DRO}
+\label{sec:realdata}
+
+\subsection{Dataset}
+
+\begin{itemize}
+    \item Volume size: \(125 \times 603 \times 1272\) voxels (\(z \times y \times x\)),
+    uint16, LZW-compressed TIFF.
+    \item Voxel size: \(0.406 \times 0.406 \times 2.03~\mu\mathrm{m}\) (approximately
+    \(5\times\) anisotropy along \(z\)).
+    \item Biology: at this stage the \emph{Drosophila} blastoderm is a \textbf{hollow
+    shell} --- roughly \(6000\) nuclei tile the \emph{surface} of a sphere, while the
+    interior is essentially empty cytoplasm. This geometry is central to the bug described
+    next.
+    \item 50 time frames at 30-second intervals.
+\end{itemize}
+
+\subsection{The ROI-Extraction Bug and Its Fix}
+\label{sec:roi-bug}
+
+\textbf{Symptom.}
+The first real-data fits produced a featureless, uniform cloud of Gaussians in the
+viewer, with no resolvable nuclei --- completely unlike the same data in Napari, which
+clearly shows a surface studded with nuclei.
+
+\textbf{Root cause.}
+Fitting is performed on a cropped region of interest, not the full volume. The crop was
+selected by \code{center\_roi()}, which centres a fixed-size box on the geometric centre
+of the high-intensity bounding box. For a \emph{hollow} blastoderm, the bounding box
+spans the whole sphere, so its geometric centre lies in the \textbf{empty interior}. The
+crop therefore captured mostly signal-free cytoplasm, and the Gaussians had no nuclear
+structure to lock onto.
+
+\textbf{Fix.}
+The crop is now \textbf{anchored to the top of the high-intensity bounding box} (the
+polar cap of the shell) along \(z\), while remaining centred in \(x\) and \(y\). This
+places the ROI on the surface layer where nuclei actually reside. The change applies to
+both \code{train\_ctc.py} and \code{train\_temporal\_ctc.py} (commit \code{63c068f}).
+
+\textbf{Confirmation on real data.}
+The corrected temporal run reports its ROI as \(z\!\in\![0,24]\) --- i.e.\ anchored at the
+pole --- whereas the buggy run had used \(z\!\in\![56,68]\), squarely in the interior. The
+fix is therefore confirmed not just in code but in the actual crop coordinates of the
+re-run.
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabularx}{\textwidth}{@{}XX@{}}
+\toprule
+\textbf{Before fix} & \textbf{After fix} \\
+\midrule
+\(z\)-anchor at bounding-box \emph{centre} (\(z \approx 62\)): interior cytoplasm only. &
+\(z\)-anchor at bounding-box \emph{start} (\(z \approx 0\)--\(12\)): top pole and surface nuclei. \\
+Viewer: uniform diffuse cloud of dots. &
+Viewer: discrete nuclear clusters on the blastoderm surface. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Corrected Static Fit (40{,}000 Gaussians, A100 GPU)}
+
+\begin{itemize}
+    \item ROI: \(64 \times 256 \times 256\) voxels, pole-anchored.
+    \item Gaussians: 40{,}000; iterations: 5{,}000; batch size: 4{,}096.
+    \item Wall-clock: approximately 37 minutes (2{,}211~s) on one A100.
+    \item \textbf{Final PSNR: \(28.71\) dB} (SLURM job 2255712).
+\end{itemize}
+
+\textbf{Why the corrected PSNR is \emph{lower} than the buggy run (and why that is good).}
+The earlier, buggy fit scored \(29.43\) dB. At first glance the fix appears to have hurt
+the metric, but the opposite is true. The buggy ROI was almost flat interior cytoplasm,
+which is trivially easy to reconstruct and therefore yields a deceptively high PSNR. The
+corrected ROI is full of high-frequency nuclear structure, which is genuinely harder to
+fit. A modest \(0.7\) dB drop while moving from ``reconstructing nothing'' to
+``reconstructing real nuclei'' is the \emph{honest} and desirable outcome; the number now
+measures something meaningful.
+
+\subsection{Corrected Real-Data Temporal Reconstruction}
+
+A 3-frame shared-identity sequence was fitted on the corrected ROI (1{,}500 Gaussians per
+frame, target shape \(24\times64\times64\); SLURM job 2255711). Only three frames were
+used because only \code{t000}--\code{t002} are currently staged in the cluster workspace.
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Metric} & \textbf{Frame 0} & \textbf{Frame 1} & \textbf{Frame 2} \\
+\midrule
+Density PSNR (dB)            & 30.09 & 32.02 & 32.16 \\
+Frame-to-frame consistency (dB) & --- & 26.24 & 27.60 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Temporal smoothness was \(0.099\) voxels (mean acceleration of Gaussian centres),
+indicating the warm-started Gaussians move only slightly between frames, as expected over
+a 60-second interval. Per-frame \code{t000}--\code{t002.splat} files were exported for
+3D+t scrubbing. The later frames score higher because each is warm-started from the
+already-converged previous frame.
+
+\subsection{Secondary Finding: ``Floater'' Gaussians and Their Removal}
+\label{sec:floaters}
+
+\textbf{Symptom.}
+After the ROI fix, the viewer correctly showed hundreds of discrete nuclei --- but also a
+single dominant glowing sphere near the centre of each frame.
+
+\textbf{Diagnosis.}
+Direct inspection of the exported \code{.splat} scale data revealed the cause. The median
+Gaussian has an RMS scale of \(\approx 1.8\) voxels (nucleus-sized), and the \(99\)th
+percentile is \(\approx 5\) voxels, but a \textbf{handful of outliers reach \(25\)--\(28\)
+voxels}. These outliers are thin, flat discs (e.g.\ \(\approx 25\times34\times1\) voxels)
+sitting at the \emph{same} position in every frame. They are classic 3DGS
+``\emph{floaters}'': a few large, low-frequency Gaussians that minimise the loss by
+painting the smooth background level rather than representing any nucleus. Because the
+exporter maps amplitude to brightness, these large bright discs visually dominate the
+render even though only 2--5 of the 1{,}500 Gaussians are involved.
+
+\textbf{Fix.}
+A small utility, \code{scripts/prune\_splat.py} (commit \code{e0f6063}), reads the
+\code{.splat} binary directly and removes Gaussians whose RMS scale exceeds a threshold
+(8 voxels), which sits cleanly in the gap between real nuclei (\(\le 5\)) and floaters
+(\(\ge 25\)). After pruning, the maximum scale drops from \(\approx 28\) to \(\approx 7.6\)
+voxels, the nucleus-sized median is untouched, and \(\approx 1{,}497\) of 1{,}500
+Gaussians are retained per frame. The central blob disappears and the nuclei render
+cleanly. This is a standard, defensible post-processing step in the 3DGS literature; the
+\emph{principled} alternative (a scale-regularisation penalty during training) is noted as
+future work in Section~\ref{sec:nextsteps}.
+
+\section{Outstanding Item: GPU-Fit SSIM}
+\label{sec:outstanding}
+
+The one metric not yet captured is the structural-similarity index (SSIM) of the
+40{,}000-Gaussian static fit. SSIM complements PSNR by measuring perceived structural
+agreement rather than raw error. The blocker is purely computational: \code{compare\_fit.py}
+reconstructs the full \(64\times256\times256 \approx 4.2\)~million-voxel volume by querying
+every voxel against all \(40{,}000\) Gaussians (\(\sim\!10^{11}\) evaluations). On the
+login node's CPU this does not complete in a reasonable time; the two manual attempts were
+interrupted. The remedy is to compute the metric where the fit itself runs --- on the GPU,
+inside a batch job --- or on a subsampled volume. For reference, the phantom SSIM was
+\(0.9798\) (confirming the metric code is correct), and a small local real-data ROI gave
+\(0.7423\); the 40k-Gaussian GPU value is expected in the same range and will be filled in
+once the metric is run as a GPU batch job.
+
+\section{Codebase and Infrastructure}
+
+\subsection{Module Structure (\code{volsplat/})}
+\begin{itemize}
+    \item \code{gaussians.py}: \code{GaussianSet}, quaternion-to-rotation, and voxel-query
+    rendering (the unbiased forward model from E1).
+    \item \code{train.py}: \code{train\_static()}, \code{evaluate\_full()}, and point
+    sampling.
+    \item \code{temporal.py}: 4D phantom generator and the three temporal variants
+    (shared-identity, native-4D, deformation).
+    \item \code{export.py}: \code{to\_ply()}, \code{to\_splat()}, \code{read\_ply()}
+    (round-trip verified).
+    \item \code{ctc.py}: Cell-Tracking-Challenge loader, percentile normalisation, and the
+    (now-corrected) ROI utilities.
+    \item \code{losses.py}: MSE, PSNR, and a 3D-SSIM wrapper over \code{skimage}.
+\end{itemize}
+
+\subsection{HPC Scripts (\code{scripts/hpc/})}
+\begin{itemize}
+    \item \code{run\_ctc\_fixed.sbatch}: corrected-ROI static fit followed by
+    \code{compare\_fit.py} (added this period).
+    \item \code{temporal\_ctc.sbatch}: real-data temporal reconstruction job.
+    \item \code{run\_compare\_fit.sh}: login-node convenience script for the SSIM metric.
+    \item All scripts initialise \code{LD\_PRELOAD}/\code{LD\_LIBRARY\_PATH} before
+    \code{module purge}, fixing a recurring \code{libpython} load error under
+    \code{set -u} on the Alpha cluster.
+\end{itemize}
+
+\subsection{Post-processing and Viewer}
+\begin{itemize}
+    \item \code{scripts/prune\_splat.py}: removes oversized floater Gaussians from a
+    \code{.splat} (Section~\ref{sec:floaters}).
+    \item \code{viewer/index.html}: self-contained Three.js (r160) viewer with per-Gaussian
+    sizing, Gaussian-falloff shading, and a 3D+t frame slider.
+\end{itemize}
+
+\section{Next Steps}
+\label{sec:nextsteps}
+\begin{itemize}
+    \item Compute the 40k-Gaussian SSIM as a GPU batch job to close the one outstanding
+    metric (Section~\ref{sec:outstanding}).
+    \item Add an optional \textbf{scale-regularisation} term to \code{train\_static} so
+    floaters are suppressed at the source, making the displayed Gaussians and the reported
+    PSNR refer to exactly the same set.
+    \item Stage additional DRO frames (\code{t001.tif}--\code{t003.tif} and beyond) in the
+    workspace to extend the temporal sequence and exercise the cell-division case on real
+    data.
+    \item Quantify how many Gaussians per nucleus the real fit uses, to position real-data
+    3DGS on the E5 storage/fidelity curve against the synthetic baselines.
+    \item Prepare the final seminar presentation, including a live viewer demonstration of
+    the corrected, floater-pruned embryo sequence.
+\end{itemize}
+
+\end{document}

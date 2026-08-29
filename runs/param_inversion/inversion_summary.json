@@ -1,0 +1,17 @@
+[
+  {
+    "k": 50,
+    "delta_psnr_iso_minus_full": -3.8842843675980654,
+    "delta_f1_iso_minus_full": 0.02930402930402931
+  },
+  {
+    "k": 100,
+    "delta_psnr_iso_minus_full": -3.402058017806707,
+    "delta_f1_iso_minus_full": -0.00010058056035059752
+  },
+  {
+    "k": 250,
+    "delta_psnr_iso_minus_full": -2.399678310279499,
+    "delta_f1_iso_minus_full": 0.09179870789066198
+  }
+]

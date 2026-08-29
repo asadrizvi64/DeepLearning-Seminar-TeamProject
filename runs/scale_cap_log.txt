@@ -1,0 +1,42 @@
+
+=== z0y528x144: 30 nuclei (A=21, B=9) ===
+  control  cap=None   S_A=0.762 S_B=0.444  scale kept/lost=8.03/10.74  nucPSNR=24.12
+  mild     cap=12.0   S_A=0.762 S_B=0.444  scale kept/lost=8.38/8.59  nucPSNR=24.15
+  medium   cap=10.0   S_A=0.810 S_B=0.556  scale kept/lost=7.45/7.98  nucPSNR=24.15
+  strict   cap=8.0    S_A=0.810 S_B=0.556  scale kept/lost=6.18/7.15  nucPSNR=24.02
+
+=== z0y624x144: 33 nuclei (A=20, B=13) ===
+  control  cap=None   S_A=0.750 S_B=0.385  scale kept/lost=8.47/12.11  nucPSNR=24.26
+  mild     cap=12.0   S_A=0.700 S_B=0.615  scale kept/lost=8.45/9.46  nucPSNR=24.24
+  medium   cap=10.0   S_A=0.750 S_B=0.692  scale kept/lost=7.52/6.95  nucPSNR=24.24
+  strict   cap=8.0    S_A=0.900 S_B=0.692  scale kept/lost=6.34/7.55  nucPSNR=24.26
+
+=== z0y240x336: 25 nuclei (A=21, B=4) ===
+  control  cap=None   S_A=0.952 S_B=0.500  scale kept/lost=5.55/20.75  nucPSNR=23.00
+  mild     cap=12.0   S_A=1.000 S_B=0.500  scale kept/lost=5.54/8.21  nucPSNR=23.00
+  medium   cap=10.0   S_A=1.000 S_B=0.500  scale kept/lost=5.55/7.04  nucPSNR=23.02
+  strict   cap=8.0    S_A=0.952 S_B=0.750  scale kept/lost=5.56/5.75  nucPSNR=23.03
+
+=== z0y528x240: 22 nuclei (A=17, B=5) ===
+  control  cap=None   S_A=0.882 S_B=0.200  scale kept/lost=6.20/8.13  nucPSNR=23.68
+  mild     cap=12.0   S_A=0.941 S_B=0.600  scale kept/lost=6.30/8.47  nucPSNR=23.67
+  medium   cap=10.0   S_A=0.824 S_B=0.600  scale kept/lost=6.31/7.52  nucPSNR=23.68
+  strict   cap=8.0    S_A=0.941 S_B=0.600  scale kept/lost=6.22/6.62  nucPSNR=23.65
+
+==============================================================================
+SCALE CAP SWEEP (mean over regions)
+==============================================================================
+arm           S_A     S_B  recall  s_kept  s_lost  s_Blost  nucPSNR  global
+control     0.837   0.382   0.720    7.06   12.93    11.73    23.76   24.76
+mild        0.851   0.540   0.779    7.17    8.68     9.03    23.77   24.75
+medium      0.846   0.587   0.788    6.71    7.38     7.44    23.77   24.75
+strict      0.901   0.649   0.834    6.08    6.77     6.90    23.74   24.73
+
+=== PRE-REGISTERED CRITERIA (each arm vs control) ===
+  mild     S_B +0.158 [PASS]  S_A +0.014 [PASS]  manip: s_Blost 11.73->9.03 [ok]  gap 5.87->1.52 [ok]  => CAUSAL
+  medium   S_B +0.205 [PASS]  S_A +0.009 [PASS]  manip: s_Blost 11.73->7.44 [ok]  gap 5.87->0.67 [ok]  => CAUSAL
+  strict   S_B +0.267 [PASS]  S_A +0.064 [FAIL]  manip: s_Blost 11.73->6.90 [ok]  gap 5.87->0.69 [ok]  => not established
+
+  PSNR trade: control 24.76 dB  ->  strict 24.73 dB (-0.03)
+
+Outputs -> E:\masters\MLCV seminar\TeamProject\runs\scale_cap

@@ -1,0 +1,41 @@
+{
+  "config": {
+    "out_dir": "runs/e3_smoke",
+    "shape": [
+      16,
+      24,
+      24
+    ],
+    "num_blobs": 6,
+    "sigma": 2.0,
+    "iterations": 120,
+    "init_strategy": "intensity_weighted",
+    "init_scale": 2.0,
+    "seed": 0,
+    "budgets": [
+      300,
+      800
+    ],
+    "device": "cpu"
+  },
+  "results": [
+    {
+      "num_gaussians": 300,
+      "final_psnr": 11.004162770297887,
+      "final_mae": 0.12951135635375977,
+      "fit_time_sec": 18.30174231529236,
+      "peak_gpu_memory_mb": 0.0,
+      "model_size_bytes": 15216,
+      "parameter_count": 3300
+    },
+    {
+      "num_gaussians": 800,
+      "final_psnr": 0.659951000692675,
+      "final_mae": 0.44754013419151306,
+      "fit_time_sec": 50.630457639694214,
+      "peak_gpu_memory_mb": 0.0,
+      "model_size_bytes": 37296,
+      "parameter_count": 8800
+    }
+  ]
+}

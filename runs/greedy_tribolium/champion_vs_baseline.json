@@ -1,0 +1,16 @@
+{
+  "baseline": {
+    "config": "isotropic k=50 1500it",
+    "val_psnr": 18.901344061550486,
+    "full_ssim": 0.2216547463463423,
+    "val_mae": 0.09041314572095871,
+    "num_params": 250
+  },
+  "champion": {
+    "config": "full k=100 scale4 3000it",
+    "val_psnr": 23.373602179051005,
+    "full_ssim": 0.3006732803297924,
+    "val_mae": 0.0542038232088089,
+    "num_params": 1000
+  }
+}

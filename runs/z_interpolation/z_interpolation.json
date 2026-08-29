@@ -1,0 +1,50 @@
+[
+  {
+    "dataset": "Tribolium nuclei ROI",
+    "method": "constant (mean)",
+    "psnr": 14.787542406642816,
+    "ssim": 0.17302666306709913
+  },
+  {
+    "dataset": "Tribolium nuclei ROI",
+    "method": "nearest slice",
+    "psnr": 22.904468960394198,
+    "ssim": 0.49224059993360825
+  },
+  {
+    "dataset": "Tribolium nuclei ROI",
+    "method": "linear interpolation",
+    "psnr": 24.804167341552336,
+    "ssim": 0.5579281486227239
+  },
+  {
+    "dataset": "Tribolium nuclei ROI",
+    "method": "cubic interpolation",
+    "psnr": 24.160205478200538,
+    "ssim": 0.5366258471860212
+  },
+  {
+    "dataset": "Drosophila nuclei ROI",
+    "method": "constant (mean)",
+    "psnr": 11.40691880924366,
+    "ssim": 0.10902482935789914
+  },
+  {
+    "dataset": "Drosophila nuclei ROI",
+    "method": "nearest slice",
+    "psnr": 24.638160135672212,
+    "ssim": 0.8553448695294384
+  },
+  {
+    "dataset": "Drosophila nuclei ROI",
+    "method": "linear interpolation",
+    "psnr": 29.639795265258687,
+    "ssim": 0.9145027171631585
+  },
+  {
+    "dataset": "Drosophila nuclei ROI",
+    "method": "cubic interpolation",
+    "psnr": 29.75287537515023,
+    "ssim": 0.9100988887159519
+  }
+]

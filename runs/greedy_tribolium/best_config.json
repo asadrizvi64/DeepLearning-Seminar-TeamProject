@@ -1,0 +1,38 @@
+{
+  "ideal_config": {
+    "init_strategy": "intensity_weighted",
+    "parameterization": "full",
+    "num_gaussians": 100,
+    "init_scale": 4.0,
+    "iterations": 3000
+  },
+  "baseline_val_psnr": 18.901344061550486,
+  "final_val_psnr": 23.373602179051005,
+  "total_improvement_db": 4.47225811750052,
+  "improvement_path": [
+    {
+      "step": "baseline",
+      "val_psnr": 18.901344061550486
+    },
+    {
+      "step": "init_strategy=intensity_weighted",
+      "val_psnr": 18.901344061550486
+    },
+    {
+      "step": "parameterization=full",
+      "val_psnr": 22.745780733712873
+    },
+    {
+      "step": "num_gaussians=100",
+      "val_psnr": 22.965616534728397
+    },
+    {
+      "step": "init_scale=4.0",
+      "val_psnr": 23.01308247308817
+    },
+    {
+      "step": "iterations=3000",
+      "val_psnr": 23.373602179051005
+    }
+  ]
+}

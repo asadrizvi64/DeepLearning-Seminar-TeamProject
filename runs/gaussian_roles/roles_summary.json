@@ -1,0 +1,105 @@
+{
+  "ablation": [
+    {
+      "variant": "all",
+      "n": 250.0,
+      "glob": 24.555834897027218,
+      "nuc": 24.19111876828623,
+      "bg": 24.575901027333913,
+      "f1": 0.6504494976203068,
+      "mass": 1.0
+    },
+    {
+      "variant": "object_only",
+      "n": 32.0,
+      "glob": 4.539641614921793,
+      "nuc": 5.441304263315895,
+      "bg": 4.497005443740061,
+      "f1": 0.2725225225225225,
+      "mass": 0.13301299139857292
+    },
+    {
+      "variant": "support_only",
+      "n": 218.0,
+      "glob": 18.25916894211417,
+      "nuc": 12.935588386060067,
+      "bg": 18.851387398330914,
+      "f1": 0.06270903010033446,
+      "mass": 0.866987019777298
+    }
+  ],
+  "stability": [
+    {
+      "region": "z0y528x144",
+      "radius": 3.0,
+      "n_object": 30,
+      "n_support": 220,
+      "mass_object": 0.16592226922512054,
+      "nuclei_with_ge1": 30,
+      "nuclei_with_ge2": 0,
+      "median_nj": 1.0,
+      "mean_nj": 1.0,
+      "max_nj": 1
+    },
+    {
+      "region": "z0y528x144",
+      "radius": 5.0,
+      "n_object": 31,
+      "n_support": 219,
+      "mass_object": 0.16593092679977417,
+      "nuclei_with_ge1": 30,
+      "nuclei_with_ge2": 1,
+      "median_nj": 1.0,
+      "mean_nj": 1.0333333333333334,
+      "max_nj": 2
+    },
+    {
+      "region": "z0y528x144",
+      "radius": 8.0,
+      "n_object": 44,
+      "n_support": 206,
+      "mass_object": 0.17586767673492432,
+      "nuclei_with_ge1": 30,
+      "nuclei_with_ge2": 9,
+      "median_nj": 1.0,
+      "mean_nj": 1.4666666666666666,
+      "max_nj": 4
+    },
+    {
+      "region": "z0y624x144",
+      "radius": 3.0,
+      "n_object": 33,
+      "n_support": 217,
+      "mass_object": 0.10009505599737167,
+      "nuclei_with_ge1": 33,
+      "nuclei_with_ge2": 0,
+      "median_nj": 1.0,
+      "mean_nj": 1.0,
+      "max_nj": 1
+    },
+    {
+      "region": "z0y624x144",
+      "radius": 5.0,
+      "n_object": 33,
+      "n_support": 217,
+      "mass_object": 0.10009505599737167,
+      "nuclei_with_ge1": 33,
+      "nuclei_with_ge2": 0,
+      "median_nj": 1.0,
+      "mean_nj": 1.0,
+      "max_nj": 1
+    },
+    {
+      "region": "z0y624x144",
+      "radius": 8.0,
+      "n_object": 39,
+      "n_support": 211,
+      "mass_object": 0.15036998689174652,
+      "nuclei_with_ge1": 33,
+      "nuclei_with_ge2": 5,
+      "median_nj": 1.0,
+      "mean_nj": 1.1818181818181819,
+      "max_nj": 3
+    }
+  ]
+}

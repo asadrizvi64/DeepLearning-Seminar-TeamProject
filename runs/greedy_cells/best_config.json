@@ -1,0 +1,50 @@
+{
+  "select_metric": "cell_f1",
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "ideal_config": {
+    "init_strategy": "local_maxima",
+    "parameterization": "isotropic",
+    "num_gaussians": 250,
+    "init_scale": 2.0,
+    "iterations": 3000
+  },
+  "baseline_score": 0.49183261183261173,
+  "final_score": 0.8726874657909142,
+  "total_improvement": 0.38085485395830243,
+  "improvement_path": [
+    {
+      "step": "baseline",
+      "score": 0.49183261183261173,
+      "std": 0.10899286309197194
+    },
+    {
+      "step": "init_strategy=local_maxima",
+      "score": 0.7528205128205129,
+      "std": 0.023207607177404565
+    },
+    {
+      "step": "parameterization=isotropic",
+      "score": 0.7528205128205129,
+      "std": 0.023207607177404565
+    },
+    {
+      "step": "num_gaussians=250",
+      "score": 0.8051146384479718,
+      "std": 0.013718120975400431
+    },
+    {
+      "step": "init_scale=2.0",
+      "score": 0.8051146384479718,
+      "std": 0.013718120975400431
+    },
+    {
+      "step": "iterations=3000",
+      "score": 0.8726874657909142,
+      "std": 0.04454839937958939
+    }
+  ]
+}

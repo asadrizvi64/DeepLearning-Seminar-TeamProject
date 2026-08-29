@@ -1,0 +1,42 @@
+[
+  {
+    "strategy": "local_maxima",
+    "coverage": 0.7296969696969697,
+    "duplicates": 1.0119047619047619,
+    "dup_max": 2,
+    "efficiency": 0.079,
+    "unassigned": 0.92,
+    "n_nuclei": 110,
+    "n_covered": 79
+  },
+  {
+    "strategy": "suppressed_topk",
+    "coverage": 1.0,
+    "duplicates": 1.0440909090909092,
+    "dup_max": 3,
+    "efficiency": 0.11,
+    "unassigned": 0.886,
+    "n_nuclei": 110,
+    "n_covered": 110
+  },
+  {
+    "strategy": "coverage",
+    "coverage": 1.0,
+    "duplicates": 1.0440909090909092,
+    "dup_max": 3,
+    "efficiency": 0.11,
+    "unassigned": 0.886,
+    "n_nuclei": 110,
+    "n_covered": 110
+  },
+  {
+    "strategy": "oracle_coverage",
+    "coverage": 1.0,
+    "duplicates": 1.0440909090909092,
+    "dup_max": 3,
+    "efficiency": 0.11,
+    "unassigned": 0.886,
+    "n_nuclei": 110,
+    "n_covered": 110
+  }
+]

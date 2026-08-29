@@ -19,7 +19,7 @@ from tqdm import tqdm
 
 from .gaussians import GaussianSet
 from .losses import mse_loss, psnr
-from .densify import densify, build_optimizer
+from .densify import densify, build_optimizer, project_parameterization
 from .data import intensity_weighted_sample
 from .init import init_gaussians
 
@@ -111,6 +111,7 @@ def train_static(
     seed: int = 0,
     init_scale=2.0,
     init_strategy: str = 'intensity_weighted',
+    parameterization: str = 'full',
 ):
     """Fit a GaussianSet to a static 3D volume.
 
@@ -119,6 +120,10 @@ def train_static(
 
     `init_strategy` selects among the strategies in `volsplat.init.INIT_STRATEGIES`:
     'random', 'intensity_weighted' (P1 default), or 'local_maxima' (E2).
+
+    `parameterization` constrains the Gaussian covariance:
+    'isotropic' (spheres), 'diagonal' (axis-aligned ellipsoids), or 'full' (rotated
+    ellipsoids). See `volsplat.densify.build_optimizer`.
     """
     if device is None:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -130,7 +135,8 @@ def train_static(
         volume, num_gaussians, strategy=init_strategy,
         init_scale=init_scale, seed=seed,
     ).to(device)
-    optimizer = build_optimizer(gs)
+    project_parameterization(gs, parameterization)  # tie scales at init for isotropic
+    optimizer = build_optimizer(gs, parameterization=parameterization)
 
     grad_accum = torch.zeros_like(gs.positions)
     grad_count = 0
@@ -154,6 +160,7 @@ def train_static(
             grad_count += 1
 
         optimizer.step()
+        project_parameterization(gs, parameterization)
 
         if it % log_every == 0:
             with torch.no_grad():

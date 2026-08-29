@@ -1,0 +1,1 @@
+{"config": {"dataset": "real", "init": "intensity_weighted", "num_gaussians": 10, "parameterization": "isotropic", "seed": 0}, "curve": [[0, 6.221809791022692], [100, 6.294665170165903], [200, 7.0379724694107315]]}

@@ -1,0 +1,15 @@
+{
+  "n_frames": 50,
+  "n_observations": 9261,
+  "disp_vox_median": 2.0,
+  "disp_vox_p99": 11.198192796628083,
+  "disp_vox_max": 20.904544960366874,
+  "disp_um_median": 0.9078435988649146,
+  "gaussian_budget_vox": 4.8,
+  "frac_within_budget": 0.8614620451355145,
+  "frac_within_measured_travel": 0.12018140589569161,
+  "lr_needed_p99": 0.003732730932209361,
+  "lr_multiple_p99": 2.3329568326308503,
+  "swap_rate": 0.003131411294676601,
+  "n_divisions": 0
+}

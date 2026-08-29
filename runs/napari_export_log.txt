@@ -1,0 +1,6 @@
+Target (64, 128, 128), range [0.000, 1.000]
+Reconstructing from 2000 Gaussians (this streams z-slabs)...
+Wrote gt.tif / recon.tif / error.tif -> runs\p1_phantom\napari
+
+View in napari:
+  napari "runs\p1_phantom\napari\gt.tif" "runs\p1_phantom\napari\recon.tif" "runs\p1_phantom\napari\error.tif"

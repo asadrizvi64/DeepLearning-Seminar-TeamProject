@@ -1,0 +1,11 @@
+{
+  "manual_spacing_voxels": 7.595564308451368,
+  "n_manual": 189,
+  "crop_shape": [
+    99,
+    469,
+    596
+  ],
+  "match_radius": 3.0,
+  "note": "annotation is sparse; recall is valid, precision is not"
+}

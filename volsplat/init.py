@@ -135,12 +135,172 @@ def local_maxima_init(
     return _build_gaussian_set(positions, amps, num_gaussians, init_scale)
 
 
+def coverage_init(
+    volume: np.ndarray,
+    num_gaussians: int,
+    init_scale=2.0,
+    seed: int = 0,
+    smooth_sigma: float = 2.0,
+    min_distance: int = 13,
+    threshold_rel: float = 0.12,
+    max_candidates: int = 20000,
+) -> GaussianSet:
+    """Cover every detected nucleus first, then spend what's left on support.
+
+    `local_maxima_init` ranks candidate peaks by intensity and keeps the top
+    `num_gaussians`. On real embryo data that systematically starves DIM nuclei: they
+    are never seeded no matter how large the budget, because brighter regions consume
+    the whole ranking (measured: an 8x surplus budget still covered only half the
+    nuclei, and 58% of missed nuclei had no Gaussian within 3 voxels).
+
+    This strategy instead:
+      1. detects candidate nuclei with non-maximum suppression at the NUCLEUS SPACING
+         (`min_distance`), using a LOW relative threshold so faint nuclei survive;
+      2. places exactly one Gaussian on each candidate -- coverage before budget;
+      3. allocates any remaining budget by intensity-weighted sampling, which supplies
+         broad background/support structure.
+
+    If the budget is smaller than the candidate count, candidates are taken in order of
+    intensity (coverage is then impossible and the caller should raise `num_gaussians`).
+    """
+    from scipy.ndimage import gaussian_filter, maximum_filter
+
+    smoothed = gaussian_filter(volume.astype(np.float32), sigma=smooth_sigma)
+    thr = float(smoothed.max()) * threshold_rel
+    size = int(2 * min_distance + 1)
+    is_peak = (maximum_filter(smoothed, size=size) == smoothed) & (smoothed > thr)
+    coords = np.argwhere(is_peak)                          # (N, 3) as (z, y, x)
+
+    if coords.shape[0] == 0:
+        return intensity_weighted_init(volume, num_gaussians, init_scale, seed)
+
+    inten = smoothed[coords[:, 0], coords[:, 1], coords[:, 2]]
+    order = np.argsort(-inten)
+    coords, inten = coords[order][:max_candidates], inten[order][:max_candidates]
+
+    n_nuc = min(coords.shape[0], num_gaussians)
+    nuc_pos = np.stack(
+        [coords[:n_nuc, 2], coords[:n_nuc, 1], coords[:n_nuc, 0]], axis=-1
+    ).astype(np.float32)                                   # -> (x, y, z)
+    nuc_amp = np.clip(inten[:n_nuc], 0.05, None).astype(np.float32)
+
+    n_fill = num_gaussians - n_nuc
+    if n_fill <= 0:
+        return _build_gaussian_set(nuc_pos, nuc_amp, num_gaussians, init_scale)
+
+    fill_pos = intensity_weighted_sample(volume, n_fill, seed=seed)
+    D, H, W = volume.shape
+    ix = np.clip(fill_pos[:, 0].round().astype(np.int64), 0, W - 1)
+    iy = np.clip(fill_pos[:, 1].round().astype(np.int64), 0, H - 1)
+    iz = np.clip(fill_pos[:, 2].round().astype(np.int64), 0, D - 1)
+    fill_amp = np.clip(volume[iz, iy, ix], 0.05, None).astype(np.float32)
+
+    positions = np.concatenate([nuc_pos, fill_pos], axis=0)
+    amps = np.concatenate([nuc_amp, fill_amp], axis=0)
+    return _build_gaussian_set(positions, amps, num_gaussians, init_scale)
+
+
+def suppressed_topk_init(
+    volume: np.ndarray,
+    num_gaussians: int,
+    init_scale=2.0,
+    seed: int = 0,
+    smooth_sigma: float = 2.0,
+    min_distance: int = 13,
+) -> GaussianSet:
+    """Control for `coverage_init`: spatial suppression at the nucleus spacing, but
+    still ranked GLOBALLY BY INTENSITY with no coverage guarantee.
+
+    `local_maxima_init` suppresses at only 3 voxels, so a single bright nucleus can
+    absorb many redundant seeds; `coverage_init` changes BOTH the suppression radius
+    and the allocation policy. This strategy changes only the radius, isolating how
+    much of the improvement comes from de-duplication alone versus from covering
+    faint candidates.
+    """
+    from scipy.ndimage import gaussian_filter, maximum_filter
+
+    smoothed = gaussian_filter(volume.astype(np.float32), sigma=smooth_sigma)
+    size = int(2 * min_distance + 1)
+    is_peak = (maximum_filter(smoothed, size=size) == smoothed) & (smoothed > 0.0)
+    coords = np.argwhere(is_peak)
+    if coords.shape[0] == 0:
+        return intensity_weighted_init(volume, num_gaussians, init_scale, seed)
+
+    inten = smoothed[coords[:, 0], coords[:, 1], coords[:, 2]]
+    order = np.argsort(-inten)
+    coords, inten = coords[order], inten[order]
+
+    n = min(coords.shape[0], num_gaussians)
+    pos = np.stack([coords[:n, 2], coords[:n, 1], coords[:n, 0]], axis=-1).astype(np.float32)
+    amp = np.clip(inten[:n], 0.05, None).astype(np.float32)
+    if n == num_gaussians:
+        return _build_gaussian_set(pos, amp, num_gaussians, init_scale)
+
+    n_fill = num_gaussians - n
+    fill_pos = intensity_weighted_sample(volume, n_fill, seed=seed)
+    D, H, W = volume.shape
+    ix = np.clip(fill_pos[:, 0].round().astype(np.int64), 0, W - 1)
+    iy = np.clip(fill_pos[:, 1].round().astype(np.int64), 0, H - 1)
+    iz = np.clip(fill_pos[:, 2].round().astype(np.int64), 0, D - 1)
+    fill_amp = np.clip(volume[iz, iy, ix], 0.05, None).astype(np.float32)
+    return _build_gaussian_set(np.concatenate([pos, fill_pos]),
+                               np.concatenate([amp, fill_amp]),
+                               num_gaussians, init_scale)
+
+
+def oracle_coverage_init(
+    volume: np.ndarray,
+    num_gaussians: int,
+    init_scale=2.0,
+    seed: int = 0,
+    nuclei=None,
+) -> GaussianSet:
+    """EXPERIMENTAL UPPER BOUND -- NOT A DEPLOYABLE METHOD.
+
+    Places one Gaussian on each supplied target nucleus, then fills the remaining
+    budget with intensity-weighted support. Because it consumes the evaluation target,
+    it must never be reported as a method; its only purpose is to isolate stage 3 by
+    answering: if EVERY nucleus starts covered, how many survive fitting?
+
+    `nuclei` is an (N, 3) array of (z, y, x) target positions.
+    """
+    if nuclei is None or len(nuclei) == 0:
+        raise ValueError("oracle_coverage_init requires `nuclei` (N,3) in (z,y,x). "
+                         "It is an experimental upper bound, not a real initializer.")
+    nuclei = np.asarray(nuclei)
+    n = min(len(nuclei), num_gaussians)
+    pos = np.stack([nuclei[:n, 2], nuclei[:n, 1], nuclei[:n, 0]], axis=-1).astype(np.float32)
+
+    D, H, W = volume.shape
+    iz = np.clip(nuclei[:n, 0].round().astype(np.int64), 0, D - 1)
+    iy = np.clip(nuclei[:n, 1].round().astype(np.int64), 0, H - 1)
+    ix = np.clip(nuclei[:n, 2].round().astype(np.int64), 0, W - 1)
+    amp = np.clip(volume[iz, iy, ix], 0.05, None).astype(np.float32)
+
+    n_fill = num_gaussians - n
+    if n_fill <= 0:
+        return _build_gaussian_set(pos, amp, num_gaussians, init_scale)
+
+    fill_pos = intensity_weighted_sample(volume, n_fill, seed=seed)
+    fx = np.clip(fill_pos[:, 0].round().astype(np.int64), 0, W - 1)
+    fy = np.clip(fill_pos[:, 1].round().astype(np.int64), 0, H - 1)
+    fz = np.clip(fill_pos[:, 2].round().astype(np.int64), 0, D - 1)
+    fill_amp = np.clip(volume[fz, fy, fx], 0.05, None).astype(np.float32)
+    return _build_gaussian_set(np.concatenate([pos, fill_pos]),
+                               np.concatenate([amp, fill_amp]),
+                               num_gaussians, init_scale)
+
+
 # ----------------------------------------------------------- dispatcher
 
 INIT_STRATEGIES = {
     'random':              random_init,
     'intensity_weighted':  intensity_weighted_init,
     'local_maxima':        local_maxima_init,
+    'suppressed_topk':     suppressed_topk_init,
+    'coverage':            coverage_init,
+    # experimental upper bound; consumes the evaluation target, never a method
+    'oracle_coverage':     oracle_coverage_init,
 }
 
 

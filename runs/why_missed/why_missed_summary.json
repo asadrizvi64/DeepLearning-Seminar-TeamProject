@@ -1,0 +1,56 @@
+[
+  {
+    "property": "contrast",
+    "label": "local contrast (peak - bg)",
+    "hypothesis": "MSE weighting",
+    "found_median": 0.3710552155971527,
+    "missed_median": 0.028490424156188965,
+    "pct_diff": -92.3217828824866,
+    "p_value": 2.0506700847965464e-06
+  },
+  {
+    "property": "peak",
+    "label": "peak intensity",
+    "hypothesis": "MSE weighting",
+    "found_median": 0.8240968585014343,
+    "missed_median": 0.6970843970775604,
+    "pct_diff": -15.412321981267402,
+    "p_value": 1.7056284729628214e-07
+  },
+  {
+    "property": "size",
+    "label": "nucleus size (voxels)",
+    "hypothesis": "below representable scale",
+    "found_median": 5.033388796769513,
+    "missed_median": 5.294682846838864,
+    "pct_diff": 5.191215313729394,
+    "p_value": 0.03325204324819332
+  },
+  {
+    "property": "nn_dist",
+    "label": "distance to nearest neighbour",
+    "hypothesis": "crowding / assignment",
+    "found_median": 28.460498809814453,
+    "missed_median": 26.495283126831055,
+    "pct_diff": -6.905064089167171,
+    "p_value": 0.46903353810041837
+  },
+  {
+    "property": "depth_z",
+    "label": "depth in z",
+    "hypothesis": "light-sheet attenuation",
+    "found_median": 42.0,
+    "missed_median": 15.0,
+    "pct_diff": -64.28571428418368,
+    "p_value": 0.000569967819615946
+  },
+  {
+    "property": "dist_to_init",
+    "label": "distance to nearest initial Gaussian",
+    "hypothesis": "placement",
+    "found_median": 0.0,
+    "missed_median": 0.0,
+    "pct_diff": 0.0,
+    "p_value": 1.0
+  }
+]

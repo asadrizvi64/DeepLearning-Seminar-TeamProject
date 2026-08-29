@@ -1,0 +1,40 @@
+{
+  "budget": 5000,
+  "frames": 10,
+  "match_um": 3.0,
+  "rows": [
+    {
+      "gap": 1,
+      "attempts": 1324,
+      "correct": 1274,
+      "switch": 0,
+      "false": 50,
+      "missed": 377,
+      "correct_rate": 0.9622356495468278,
+      "switch_rate": 0.0,
+      "false_rate": 0.0377643504531722
+    },
+    {
+      "gap": 2,
+      "attempts": 1158,
+      "correct": 1106,
+      "switch": 0,
+      "false": 52,
+      "missed": 354,
+      "correct_rate": 0.9550949913644214,
+      "switch_rate": 0.0,
+      "false_rate": 0.044905008635578586
+    },
+    {
+      "gap": 3,
+      "attempts": 1015,
+      "correct": 964,
+      "switch": 0,
+      "false": 51,
+      "missed": 308,
+      "correct_rate": 0.9497536945812808,
+      "switch_rate": 0.0,
+      "false_rate": 0.05024630541871921
+    }
+  ]
+}
