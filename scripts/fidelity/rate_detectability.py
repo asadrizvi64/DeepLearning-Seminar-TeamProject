@@ -308,6 +308,12 @@ def main():
     shape = None if args.full else args.shape
     origin = [0, 0, 0] if args.full else args.origin
     crop, lo, hi = load_crop(root, args.frame, origin, shape, args.seq)
+    tra_file = Path(root) / f'{args.seq}_GT' / 'TRA' / f'man_track{args.frame:03d}.tif'
+    if args.gt == 'tra' and not tra_file.exists() and args.dataset == 'DRO' and args.frame == 0:
+        # the cluster copy of DRO may hold only 01/; runs/dro_manual_centroids.npy is the
+        # same 189 TRA centroids (verified to 0.000 voxels), so fall back to it.
+        print(f'note: {tra_file} missing; using runs/dro_manual_centroids.npy (identical)')
+        args.gt = 'npy'
     if args.gt == 'npy':
         manual = manual_in_crop(origin, crop.shape) if args.frame == 0 else np.zeros((0, 3))
     else:
