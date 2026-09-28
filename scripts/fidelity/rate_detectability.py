@@ -60,25 +60,40 @@ from volsplat.cellmetrics import detect_cells, match_indices  # noqa: E402
 #        and recall at N = n_true is also precision there (the F1 operating point).
 # CE voxel size: 0.09 x 0.09 x 1.0 um. (A search summary also quoted 1.242 x 1.242 x 6 um;
 # that is physically impossible here -- 708 px x 1.242 um = 880 um for a ~50 um embryo.)
+#
+# SPATIAL SCALE RULE. Every spatial parameter is a fixed multiple of the dataset's median
+# nucleus diameter D, measured from its own SEG masks (DRO 7.5 um, CE 3.6 um). The
+# multiples are the DRO values below divided by 7.5, and those DRO values were set before
+# any CE result existed -- nothing is tuned per dataset or per method. On DRO the rule
+# reproduces the original settings exactly.
 DATASETS = {
     'DRO': dict(root=r'D:/Download/train/Fluo-N3DL-DRO (1)/Fluo-N3DL-DRO',
-                voxel=(2.03, 0.406, 0.406), dense=False),
+                voxel=(2.03, 0.406, 0.406), dense=False, nucleus_um=7.5),
     'CE': dict(root=r'D:/Download/train/Fluo-N3DH-CE',
-               voxel=(1.0, 0.09, 0.09), dense=True),
+               voxel=(1.0, 0.09, 0.09), dense=True, nucleus_um=3.6),
 }
+REF_NUCLEUS_UM = 7.5                           # DRO, where the base values were chosen
+BASE = dict(log_sigmas=(1.5, 2.0, 2.5, 3.0), match=3.0, nms=2.0, smooth=0.8)
 DRO = Path(DATASETS['DRO']['root'])           # kept for scripts that import it
 V = np.array(DATASETS['DRO']['voxel'])        # um per voxel (z, y, x); set by configure()
-MATCH_UM = 3.0
+MATCH_UM = BASE['match']
+NMS_UM = BASE['nms']
+SMOOTH_UM = BASE['smooth']
+LOG_SIGMAS_UM = BASE['log_sigmas']
 PROMINENCE = 0.02
-LOG_SIGMAS_UM = (1.5, 2.0, 2.5, 3.0)          # fixed in advance, not tuned per method
 BUDGETS = (50, 100, 200)                      # sparse-annotation default
 DENSE_FACTORS = (1.0, 1.5, 2.0)               # dense-annotation budgets, x n_true
 SURVIVAL_S = 100
 
 
-def configure(voxel):
-    global V
+def configure(voxel, nucleus_um=REF_NUCLEUS_UM):
+    global V, MATCH_UM, NMS_UM, SMOOTH_UM, LOG_SIGMAS_UM
     V = np.asarray(voxel, dtype=np.float64)
+    k = nucleus_um / REF_NUCLEUS_UM
+    MATCH_UM = BASE['match'] * k
+    NMS_UM = BASE['nms'] * k
+    SMOOTH_UM = BASE['smooth'] * k
+    LOG_SIGMAS_UM = tuple(s * k for s in BASE['log_sigmas'])
 
 
 # ------------------------------------------------------------------ data
@@ -222,8 +237,8 @@ def log_response(img):
 
 
 def ranked_candidates(img):
-    cand = detect_cells(img, mode='3d', threshold_abs=0.0, smoothing_sigma=0.8, min_distance=2.0,
-                        prominence=PROMINENCE, voxel_size_zyx=tuple(V))
+    cand = detect_cells(img, mode='3d', threshold_abs=0.0, smoothing_sigma=SMOOTH_UM,
+                        min_distance=NMS_UM, prominence=PROMINENCE, voxel_size_zyx=tuple(V))
     L = log_response(img)
     if len(cand) == 0:
         return cand, cand, L
@@ -288,7 +303,7 @@ def main():
     (out / 'luxar').mkdir(parents=True, exist_ok=True)
 
     ds = DATASETS[args.dataset]
-    configure(ds['voxel'])
+    configure(ds['voxel'], ds['nucleus_um'])
     root = args.root or args.dro or ds['root']
     shape = None if args.full else args.shape
     origin = [0, 0, 0] if args.full else args.origin
@@ -311,7 +326,8 @@ def main():
     meta = dict(dataset=args.dataset, seq=args.seq, origin=origin, shape=list(crop.shape),
                 frame=args.frame, gt_source=args.gt, n_manual=int(len(manual)),
                 budgets=budgets, raw_bytes=int(crop.nbytes), norm_lo=lo, norm_hi=hi,
-                voxel_um=V.tolist(), match_um=MATCH_UM, log_sigmas_um=LOG_SIGMAS_UM,
+                voxel_um=V.tolist(), nucleus_um=ds['nucleus_um'], match_um=MATCH_UM,
+                nms_um=NMS_UM, smooth_um=SMOOTH_UM, log_sigmas_um=LOG_SIGMAS_UM,
                 survival_S=SURVIVAL_S)
     json.dump(meta, open(out / 'meta.json', 'w'), indent=2)
     print(f'{args.dataset} t{args.frame:03d} {origin} {crop.shape} | {len(manual)} labelled nuclei '
