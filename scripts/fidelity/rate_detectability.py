@@ -143,21 +143,31 @@ def luxar_fit(crop, seeds, n_iters, device, zarr_path, refit):
         res = GSplatData.load(str(zarr_path))
         fit_s = float('nan')
     else:
+        # output_space='voxel' is REQUIRED: with voxel_size given, Luxar's default
+        # 'real' space stores centers/Cholesky in microns, and render_to_volume on a
+        # voxel grid then misplaces every splat (measured: render-vs-data r = 0.08,
+        # vs 0.93 once mapped back to voxels). voxel_size still informs the fit.
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             res = fit_gaussian_splats(crop.astype(np.float32), seeds=int(seeds), n_iters=n_iters,
-                                      device=device, verbose=False, voxel_size=list(V))
+                                      device=device, verbose=False, voxel_size=list(V),
+                                      output_space='voxel')
         fit_s = time.time() - t
         shutil.rmtree(zarr_path, ignore_errors=True)
         res.save(str(zarr_path))
     nbytes = sum(f.stat().st_size for f in zarr_path.rglob('*') if f.is_file())
     rec = render_to_volume(res, shape=crop.shape, device=device).astype(np.float32)
+    align_r = float(np.corrcoef(rec.ravel(), crop.astype(np.float32).ravel())[0, 1])
+    if align_r < 0.5:
+        raise RuntimeError(f'Luxar render does not line up with the data (r={align_r:.2f}); '
+                           'check output_space / voxel_size before trusting any score')
     # Luxar renders in its own normalised units (floor-subtracted, [0,1]); map back to
     # raw counts by least squares so every method sees the same intensity scale. The
     # map is affine, so rankings are unchanged; it only makes thresholds comparable.
     a, b = np.polyfit(rec.ravel(), crop.astype(np.float32).ravel(), 1)
     return a * rec + b, nbytes, {'seeds': int(seeds), 'n_splats': int(res.centers.shape[0]),
-                                 'fit_s': fit_s, 'affine_a': float(a), 'affine_b': float(b)}
+                                 'fit_s': fit_s, 'affine_a': float(a), 'affine_b': float(b),
+                                 'align_r': align_r}
 
 
 # ------------------------------------------------------------------ scoring
