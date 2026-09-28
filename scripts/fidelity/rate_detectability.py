@@ -113,7 +113,8 @@ def jpegxl(crop, target):
 
 def zfp(crop, target):
     rate = max(target * 8.0 / crop.size, 0.02)
-    b = ic.zfp_encode(crop.astype(np.float32), mode='r', level=rate)
+    # the enum works across imagecodecs versions; the 'r' shorthand stopped working
+    b = ic.zfp_encode(crop.astype(np.float32), mode=ic.ZFP.MODE.FIXED_RATE, level=rate)
     return ic.zfp_decode(b).astype(np.float32), len(b), {'bits_per_value': rate}
 
 
