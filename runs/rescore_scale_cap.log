@@ -1,0 +1,40 @@
+
+=== z0y528x144: 30 nuclei (A=21, B=9) ===
+  control  cap=None   OLD: S_A=0.762 S_B=0.444 recall=0.667  |  NEW: S_A=0.762 S_B=0.444 recall=0.667  |  matcher flips=0
+  [reproduction check] z0y528x144/control  (historical vs this-run, OLD matcher)
+      S_A              hist=  0.7619  rerun=  0.7619  [ok]
+      S_B              hist=  0.4444  rerun=  0.4444  [ok]
+      recall           hist=  0.6667  rerun=  0.6667  [ok]
+      scale_kept       hist=  8.0320  rerun=  8.0320  [ok]
+      scale_lost       hist= 10.7435  rerun= 10.7435  [ok]
+      scale_B_lost     hist= 11.4850  rerun= 11.4850  [ok]
+      psnr_nucleus     hist= 24.1192  rerun= 24.1192  [ok]
+      psnr_background  hist= 24.5101  rerun= 24.5101  [ok]
+      psnr_global      hist= 24.4900  rerun= 24.4900  [ok]
+  [reproduction check] z0y528x144/control -> REPRODUCED (fingerprint mismatch is known -- see module docstring; this quantifies its effect)
+  medium   cap=10.0   OLD: S_A=0.810 S_B=0.556 recall=0.733  |  NEW: S_A=0.810 S_B=0.556 recall=0.733  |  matcher flips=0
+  [reproduction check] z0y528x144/medium  (historical vs this-run, OLD matcher)
+      S_A              hist=  0.8095  rerun=  0.8095  [ok]
+      S_B              hist=  0.5556  rerun=  0.5556  [ok]
+      recall           hist=  0.7333  rerun=  0.7333  [ok]
+      scale_kept       hist=  7.4545  rerun=  7.4545  [ok]
+      scale_lost       hist=  7.9828  rerun=  7.9828  [ok]
+      scale_B_lost     hist=  8.0384  rerun=  8.0384  [ok]
+      psnr_nucleus     hist= 24.1479  rerun= 24.1479  [ok]
+      psnr_background  hist= 24.4889  rerun= 24.4889  [ok]
+      psnr_global      hist= 24.4714  rerun= 24.4714  [ok]
+  [reproduction check] z0y528x144/medium -> REPRODUCED (fingerprint mismatch is known -- see module docstring; this quantifies its effect)
+
+=== z0y624x144: 33 nuclei (A=20, B=13) ===
+  control  cap=None   OLD: S_A=0.750 S_B=0.385 recall=0.606  |  NEW: S_A=0.750 S_B=0.385 recall=0.606  |  matcher flips=0
+  medium   cap=10.0   OLD: S_A=0.750 S_B=0.692 recall=0.727  |  NEW: S_A=0.750 S_B=0.692 recall=0.727  |  matcher flips=0
+
+=== z0y240x336: 25 nuclei (A=21, B=4) ===
+  control  cap=None   OLD: S_A=0.952 S_B=0.500 recall=0.880  |  NEW: S_A=0.952 S_B=0.750 recall=0.920  |  matcher flips=1
+  medium   cap=10.0   OLD: S_A=1.000 S_B=0.500 recall=0.920  |  NEW: S_A=1.000 S_B=0.500 recall=0.920  |  matcher flips=0
+
+=== z0y528x240: 22 nuclei (A=17, B=5) ===
+  control  cap=None   OLD: S_A=0.882 S_B=0.200 recall=0.727  |  NEW: S_A=0.882 S_B=0.200 recall=0.727  |  matcher flips=0
+  medium   cap=10.0   OLD: S_A=0.824 S_B=0.600 recall=0.773  |  NEW: S_A=0.882 S_B=0.600 recall=0.818  |  matcher flips=1
+
+Outputs -> E:\masters\MLCV seminar\TeamProject\runs\scale_cap_rescore

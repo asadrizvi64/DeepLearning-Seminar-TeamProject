@@ -88,54 +88,15 @@ def detect_cells(
     return coords.astype(np.float32)
 
 
-def match_indices(
-    pred_peaks: np.ndarray,
-    target_peaks: np.ndarray,
-    match_radius: float,
-):
-    """One-to-one matching within `match_radius`: MAXIMIZE the number of matched pairs
-    first, and only among maximum-cardinality solutions minimize total distance.
-
-    BUG this replaces: running `linear_sum_assignment` directly on the raw distance
-    matrix and THEN discarding pairs beyond `match_radius` minimizes total assignment
-    cost, not match count -- it can report zero matches when a valid one exists.
-    Counterexample (reproduced): pred=[10,30], target=[22,50], radius=9.945.
-    Distances [[12,40],[8,20]]; the min-cost assignment is (0,0)+(1,1) at cost 32,
-    both legs exceed the radius -> 0 matches. But 30->22 alone is a valid match at
-    distance 8. The min-cost assignment doesn't know about the radius filter.
-
-    Fix: penalize every out-of-radius edge with a cost that provably dominates the sum
-    of all in-radius edges (`big = (match_radius + 1) * (n_pred + n_tgt) + 1`, larger
-    than n*match_radius for any n <= n_pred+n_tgt). Hungarian on this reweighted matrix
-    then strictly prefers using more in-radius edges over any number of out-of-radius
-    ones -- i.e. it maximizes cardinality within the radius first, and minimizes
-    distance second, among in-radius edges only. Verified against the counterexample
-    above: it returns the correct single match (30->22, distance 8).
-
-    Returns (pred_idx, target_idx, distances) for the ACCEPTED (within-radius) pairs.
-    """
-    n_pred, n_tgt = len(pred_peaks), len(target_peaks)
-    if n_pred == 0 or n_tgt == 0:
-        empty_i = np.empty(0, dtype=int)
-        return empty_i, empty_i, np.empty(0, dtype=float)
-
-    from scipy.optimize import linear_sum_assignment
-    d = np.linalg.norm(pred_peaks[:, None, :] - target_peaks[None, :, :], axis=-1)
-    big = (float(match_radius) + 1.0) * (n_pred + n_tgt) + 1.0
-    cost = np.where(d <= match_radius, d, big)
-    ri, ci = linear_sum_assignment(cost)
-    keep = d[ri, ci] <= match_radius
-    return ri[keep], ci[keep], d[ri, ci][keep]
-
-
 def match_cells(
     pred_peaks: np.ndarray,
     target_peaks: np.ndarray,
     match_radius: float,
 ) -> dict:
-    """Match predicted to target peaks within `match_radius` (see `match_indices` for
-    the matching rule: maximum cardinality within the radius, minimum distance among
-    max-cardinality solutions). Returns precision / recall / f1 / localization RMSE / counts.
+    """Optimally match predicted to target peaks within `match_radius`.
+
+    Uses Hungarian assignment on the distance matrix, then discards pairs beyond the
+    radius. Returns precision / recall / f1 / localization RMSE / counts.
     """
     n_pred, n_tgt = len(pred_peaks), len(target_peaks)
     base = {
@@ -151,8 +112,12 @@ def match_cells(
                     mean_match_distance_voxels=float('nan'))
         return base
 
-    ri, ci, dist = match_indices(pred_peaks, target_peaks, match_radius)
-    matched = len(ri)
+    from scipy.optimize import linear_sum_assignment
+    d = np.linalg.norm(pred_peaks[:, None, :] - target_peaks[None, :, :], axis=-1)
+    ri, ci = linear_sum_assignment(d)
+    keep = d[ri, ci] <= match_radius
+    dist = d[ri, ci][keep]
+    matched = int(keep.sum())
 
     precision = matched / n_pred
     recall = matched / n_tgt
@@ -178,47 +143,18 @@ def score_cells(
     match_radius: float = None,
     mip_axis: int = 0,
     prominence: float = 1e-4,
-    voxel_size_zyx=None,
 ) -> dict:
     """Detect cells in both volumes with identical settings and score the match.
 
     `match_radius` defaults to 0.765 * min_distance (matches his auto radius of
-    9.94 voxels at min_distance=13, in voxels when voxel_size_zyx=None).
-
-    BUG this replaces (found in review): `voxel_size_zyx` was forwarded to
-    `detect_cells` for physically-correct DETECTION, but the peaks it returns are still
-    raw VOXEL indices -- matching them directly against a `match_radius` the caller
-    supplies in microns silently matches in voxel space instead. Reproduced: two peaks
-    3 z-voxels apart on voxel size (3.0, ...) um are 9 um apart physically; a 4 um
-    `match_radius` should reject them, but un-rescaled matching accepts them (voxel
-    distance 3 <= 4). Fixed by rescaling detected peaks by `voxel_size_zyx` (dropping
-    the projected axis in MIP mode, exactly as `detect_cells` itself does internally)
-    before calling `match_cells`, so `match_radius` and the peaks it's compared against
-    are in the same units. Distance-bearing output fields are relabelled from the
-    `_voxels` suffix to `_um` when physical units are in effect, and `match_units`
-    records which applies.
+    9.94 voxels at min_distance=13).
     """
     if match_radius is None:
         match_radius = 0.765 * min_distance
     kw = dict(mode=mode, threshold_abs=threshold_abs, smoothing_sigma=smoothing_sigma,
-              min_distance=min_distance, mip_axis=mip_axis, prominence=prominence,
-              voxel_size_zyx=voxel_size_zyx)
+              min_distance=min_distance, mip_axis=mip_axis, prominence=prominence)
     tgt_peaks = detect_cells(target, **kw)
     pred_peaks = detect_cells(recon, **kw)
-
-    if voxel_size_zyx is not None:
-        vs = np.asarray(voxel_size_zyx, dtype=np.float64)
-        if mode == 'mip':
-            vs = np.delete(vs, mip_axis)  # detect_cells drops this axis too
-        tgt_peaks = tgt_peaks * vs
-        pred_peaks = pred_peaks * vs
-        units = 'um'
-    else:
-        units = 'voxels'
-
     out = match_cells(pred_peaks, tgt_peaks, match_radius)
     out['detection_mode'] = mode
-    out['match_units'] = units
-    for key in ('match_radius_voxels', 'localization_rmse_voxels', 'mean_match_distance_voxels'):
-        out[key.replace('_voxels', f'_{units}')] = out.pop(key)
     return out

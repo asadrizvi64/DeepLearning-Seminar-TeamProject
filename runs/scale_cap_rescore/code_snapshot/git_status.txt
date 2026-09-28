@@ -1,0 +1,18 @@
+HEAD=06cbf456623ebcc05b3358106319188e41ff72c7
+
+ M .claude/settings.local.json
+ M runs/loss_weighting/loss_weighting.csv
+ M runs/scale_cap/scale_cap.csv
+ M scripts/scale_cap.py
+ M scripts/test_metrics.py
+ M volsplat/__pycache__/cellmetrics.cpython-311.pyc
+ M volsplat/cellmetrics.py
+?? Tribolium_Gaussian_Splatting.pptx
+?? runs/real_proof/
+?? runs/real_proof_rerun/
+?? runs/rescore_scale_cap.log
+?? runs/scale_cap_rescore/
+?? scripts/__pycache__/scale_cap.cpython-311.pyc
+?? scripts/real_proof_figure.py
+?? scripts/rerun_control_vs_capped.py
+?? scripts/rescore_scale_cap.py

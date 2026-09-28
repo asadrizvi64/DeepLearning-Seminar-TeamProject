@@ -162,17 +162,6 @@ def coverage_init(
 
     If the budget is smaller than the candidate count, candidates are taken in order of
     intensity (coverage is then impossible and the caller should raise `num_gaussians`).
-
-    UNITS CAVEAT (4th instance of the voxel-vs-physical bug class, documented, NOT
-    changed): `min_distance` and `smooth_sigma` are VOXELS and the suppression window is
-    a cube. On anisotropic data that window is not the nucleus spacing it claims to be:
-    on Tribolium (3.0 x 0.69 x 0.69 um) 13 voxels span 39 um in z but 9 um in xy; on
-    Fluo-N3DL-DRO (2.03 x 0.406 x 0.406 um) 26 um vs 5.3 um, against a 7.6 um nucleus
-    spacing -- the same cubic window that let `detect_cells` recover only 5/29 manual
-    nuclei. Every Tribolium result that used this initializer was measured WITH this
-    window, so it is kept for reproducibility. Experiments that need physically correct
-    seeding should pass their own candidates via `oracle_coverage` + `nuclei=` from
-    `cellmetrics.detect_cells(..., voxel_size_zyx=...)`, as scripts/rerank_factorial.py does.
     """
     from scipy.ndimage import gaussian_filter, maximum_filter
 
@@ -227,8 +216,6 @@ def suppressed_topk_init(
     and the allocation policy. This strategy changes only the radius, isolating how
     much of the improvement comes from de-duplication alone versus from covering
     faint candidates.
-
-    Same UNITS CAVEAT as `coverage_init`: the window is a voxel-space cube.
     """
     from scipy.ndimage import gaussian_filter, maximum_filter
 

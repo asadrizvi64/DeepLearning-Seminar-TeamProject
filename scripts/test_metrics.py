@@ -16,7 +16,7 @@ import numpy as np
 
 sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent.parent))
 
-from volsplat.cellmetrics import detect_cells, match_cells, score_cells
+from volsplat.cellmetrics import detect_cells, match_cells, match_indices, score_cells
 from volsplat import metrics as M
 
 RESULTS = []
@@ -55,6 +55,19 @@ def _():
     pk = detect_cells(v, mode='3d', threshold_abs=0.35)
     assert len(pk) == 1, f'expected 1 peak, got {len(pk)}'
     assert np.allclose(pk[0], [16, 24, 24], atol=1.5), f'peak misplaced: {pk[0]}'
+
+
+@test('real blobs on a plateau survive the flat-field guard')
+def _():
+    """The prominence guard that removes plateau 'peaks' must not also remove genuine
+    nuclei sitting on a DC pedestal -- the situation in every real reconstruction."""
+    zz, yy, xx = np.mgrid[0:40, 0:64, 0:64].astype(np.float32)
+    centres = [(10, 16, 16), (10, 16, 48), (10, 48, 16), (30, 32, 32)]
+    v = np.full((40, 64, 64), 0.5, np.float32)
+    for cz, cy, cx in centres:
+        v += np.exp(-((zz - cz) ** 2 + (yy - cy) ** 2 + (xx - cx) ** 2) / (2 * 3.0 ** 2))
+    pk = detect_cells(v, mode='3d', threshold_abs=0.6, min_distance=8)
+    assert len(pk) == len(centres), f'{len(pk)} peaks for {len(centres)} blobs on a pedestal'
 
 
 @test('absolute threshold is NOT background-offset invariant (documented sensitivity)')
@@ -108,6 +121,70 @@ def _():
     assert abs(r['precision'] - 0.5) < 1e-9, r['precision']
 
 
+@test('Hungarian-then-threshold can miss a valid within-radius match (real bug)')
+def _():
+    """BUG (external audit, confirmed 2026-09-14): `linear_sum_assignment` on the raw
+    distance matrix minimizes TOTAL cost, not match count, so it can reject a valid
+    within-radius pair in favour of a lower-total-cost assignment that uses none.
+
+    pred=[10,30], tgt=[22,50], radius=9.945. Distances [[12,40],[8,20]]. The min-cost
+    assignment is (0,0)+(1,1) = 12+20 = 32, and BOTH legs exceed the radius -> the old
+    code reported 0 matches. But 30->22 alone is valid at distance 8 (cost 8+40=48 is
+    worse overall, which is exactly why plain Hungarian avoids it -- and exactly why
+    plain Hungorian is the wrong tool here). This test pins the CORRECT answer (1 match)
+    permanently: the 15 tests that existed before this bug was found all passed with
+    the broken matcher, so a correct-looking test suite is not sufficient on its own.
+    """
+    pred = np.array([[10., 0, 0], [30., 0, 0]])
+    tgt = np.array([[22., 0, 0], [50., 0, 0]])
+    radius = 9.945
+    ri, ci, dist = match_indices(pred, tgt, radius)
+    assert len(ri) == 1, f'expected 1 match, got {len(ri)}'
+    assert ri[0] == 1 and ci[0] == 0, (ri, ci)
+    assert abs(dist[0] - 8.0) < 1e-6, dist
+    r = match_cells(pred, tgt, radius)
+    assert r['matched_peaks'] == 1, r
+
+
+def _old_style_matched_count(pred, tgt, radius):
+    """The PRE-FIX behaviour (Hungarian on raw distances, then threshold), reproduced
+    inline so this test demonstrates the actual old-vs-new contrast, not just the new
+    code's own self-consistency."""
+    from scipy.optimize import linear_sum_assignment
+    d = np.linalg.norm(pred[:, None, :] - tgt[None, :, :], axis=-1)
+    ri, ci = linear_sum_assignment(d)
+    return int((d[ri, ci] <= radius).sum())
+
+
+@test('adding an unrelated prediction cannot reduce the matched count (deterministic)')
+def _():
+    """Deterministic variant of the counterexample above, showing the failure mode as a
+    MONOTONICITY violation rather than a single missed match: reuse the exact same
+    targets/radius, first with a single prediction (old matcher gets it right), then
+    with one additional prediction that is within radius of NEITHER target (x=10, radius
+    9.945 from targets at x=22/50) -- a candidate that cannot possibly help. A correct
+    maximum-cardinality-first matcher can only match at least as many pairs after
+    gaining a candidate, never fewer. The old matcher drops 1 -> 0; `match_indices`
+    must stay at 1 -> 1. Deterministic (no RNG) so this reliably lands on the actual
+    failure mode instead of depending on a random trial to construct a competing pair.
+    """
+    tgt = np.array([[22., 0, 0], [50., 0, 0]])
+    radius = 9.945
+    pred_one = np.array([[30., 0, 0]])
+    pred_two = np.array([[30., 0, 0], [10., 0, 0]])  # x=10 is outside radius of BOTH targets
+
+    assert _old_style_matched_count(pred_one, tgt, radius) == 1
+    assert _old_style_matched_count(pred_two, tgt, radius) == 0, (
+        'old matcher should drop from 1 to 0 when the unhelpful x=10 prediction is added')
+
+    ri1, ci1, _ = match_indices(pred_one, tgt, radius)
+    ri2, ci2, _ = match_indices(pred_two, tgt, radius)
+    assert len(ri1) == 1, f'expected 1 match with one prediction, got {len(ri1)}'
+    assert len(ri2) == 1, (
+        f'expected 1 match to survive adding an unhelpful prediction, got {len(ri2)} '
+        '-- matched count must not drop')
+
+
 @test('anisotropic voxels require physical-distance matching')
 def _():
     """BUG: a 5-voxel Euclidean radius spans 2.03 um in xy but 10.15 um in z on DRO
@@ -151,11 +228,54 @@ def _():
         f'resolves (cubic={len(cubic)}, physical={len(phys)})')
 
 
+@test('score_cells must match in the SAME units it detects in (real bug)')
+def _():
+    """BUG (found in review, confirmed): `voxel_size_zyx` made `detect_cells` inside
+    `score_cells` physically aware, but the peaks it returns are still raw VOXEL
+    indices -- `score_cells` matched them directly against `match_radius`, silently
+    matching in voxel space even when the caller clearly intends physical units.
+
+    Reproduced: two peaks 3 z-voxels apart on voxel size (3.0, 0.6934, 0.6934) um are
+    9 um apart physically. A 4 um radius must reject them. The pre-fix code (raw
+    `match_cells` on un-rescaled peaks) wrongly ACCEPTS this pair -- verified separately
+    against this exact scenario before the fix landed."""
+    D, H, W = 20, 20, 20
+    tgt = np.zeros((D, H, W), np.float32); tgt[10, 10, 10] = 1.0
+    pred = np.zeros((D, H, W), np.float32); pred[13, 10, 10] = 1.0  # 3 voxels = 9um in z
+    voxel = (3.0, 0.6934, 0.6934)
+    r = score_cells(pred, tgt, mode='3d', threshold_abs=0.5, smoothing_sigma=0.0,
+                    min_distance=1.0, match_radius=4.0, prominence=1e-6,
+                    voxel_size_zyx=voxel)
+    assert r['matched_peaks'] == 0, (
+        f"expected 0 matches (9um apart, 4um radius), got {r['matched_peaks']} "
+        "-- score_cells is matching in voxel space, not physical space")
+    assert r['match_units'] == 'um', r['match_units']
+    assert 'match_radius_um' in r and 'match_radius_voxels' not in r, r.keys()
+
+
 @test('empty prediction scores zero, not NaN or crash')
 def _():
     tgt = np.array([[1., 1., 1.]])
     r = match_cells(np.empty((0, 3)), tgt, match_radius=3.0)
     assert r['recall'] == 0.0 and r['cell_f1'] == 0.0, r
+
+
+@test('match radius is enforced')
+def _():
+    tgt = np.array([[0., 0., 0.]])
+    assert match_cells(np.array([[0., 0., 1.]]), tgt, 3.0)['matched_peaks'] == 1
+    assert match_cells(np.array([[0., 0., 9.]]), tgt, 3.0)['matched_peaks'] == 0,         'a pair at distance 9 matched within radius 3'
+
+
+@test('score_cells gives F1 = 1 when the reconstruction IS the target')
+def _():
+    """End-to-end identity: detection + matching on two identical volumes."""
+    zz, yy, xx = np.mgrid[0:40, 0:64, 0:64].astype(np.float32)
+    v = np.zeros((40, 64, 64), np.float32)
+    for cz, cy, cx in [(10, 16, 16), (10, 16, 48), (10, 48, 16), (30, 32, 32)]:
+        v += np.exp(-((zz - cz) ** 2 + (yy - cy) ** 2 + (xx - cx) ** 2) / (2 * 3.0 ** 2))
+    r = score_cells(v, v, mode='3d', threshold_abs=0.3, min_distance=8)
+    assert r['cell_f1'] == 1.0 and r['target_cell_count'] == 4, r
 
 
 # ---------------------------------------------------------------- ranking

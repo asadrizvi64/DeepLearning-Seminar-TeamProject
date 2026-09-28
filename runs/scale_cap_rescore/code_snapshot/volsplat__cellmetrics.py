@@ -183,20 +183,14 @@ def score_cells(
     """Detect cells in both volumes with identical settings and score the match.
 
     `match_radius` defaults to 0.765 * min_distance (matches his auto radius of
-    9.94 voxels at min_distance=13, in voxels when voxel_size_zyx=None).
-
-    BUG this replaces (found in review): `voxel_size_zyx` was forwarded to
-    `detect_cells` for physically-correct DETECTION, but the peaks it returns are still
-    raw VOXEL indices -- matching them directly against a `match_radius` the caller
-    supplies in microns silently matches in voxel space instead. Reproduced: two peaks
-    3 z-voxels apart on voxel size (3.0, ...) um are 9 um apart physically; a 4 um
-    `match_radius` should reject them, but un-rescaled matching accepts them (voxel
-    distance 3 <= 4). Fixed by rescaling detected peaks by `voxel_size_zyx` (dropping
-    the projected axis in MIP mode, exactly as `detect_cells` itself does internally)
-    before calling `match_cells`, so `match_radius` and the peaks it's compared against
-    are in the same units. Distance-bearing output fields are relabelled from the
-    `_voxels` suffix to `_um` when physical units are in effect, and `match_units`
-    records which applies.
+    9.94 voxels at min_distance=13). `voxel_size_zyx` is forwarded to `detect_cells`
+    for physically-correct detection on anisotropic data (see its docstring); when set,
+    `min_distance` is interpreted in the same units passed there (microns), and both
+    peak sets and `match_radius` must then be in the SAME units -- this function does
+    NOT itself rescale peak coordinates for matching, since that depends on whether the
+    caller wants voxel-space or physical-space match distance (see
+    scripts/test_metrics.py and scripts/capstone_transfer.py for the established
+    physical-matching pattern: scale coordinates by voxel size before matching).
     """
     if match_radius is None:
         match_radius = 0.765 * min_distance
@@ -205,20 +199,6 @@ def score_cells(
               voxel_size_zyx=voxel_size_zyx)
     tgt_peaks = detect_cells(target, **kw)
     pred_peaks = detect_cells(recon, **kw)
-
-    if voxel_size_zyx is not None:
-        vs = np.asarray(voxel_size_zyx, dtype=np.float64)
-        if mode == 'mip':
-            vs = np.delete(vs, mip_axis)  # detect_cells drops this axis too
-        tgt_peaks = tgt_peaks * vs
-        pred_peaks = pred_peaks * vs
-        units = 'um'
-    else:
-        units = 'voxels'
-
     out = match_cells(pred_peaks, tgt_peaks, match_radius)
     out['detection_mode'] = mode
-    out['match_units'] = units
-    for key in ('match_radius_voxels', 'localization_rmse_voxels', 'mean_match_distance_voxels'):
-        out[key.replace('_voxels', f'_{units}')] = out.pop(key)
     return out

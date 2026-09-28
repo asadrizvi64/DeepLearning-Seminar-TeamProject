@@ -73,7 +73,6 @@ def fit_with_validation(
     track_displacement: bool = False,
     background: str = 'none',
     background_percentile: float = 10.0,
-    init_kwargs: dict = None,
     loss_mode: str = 'mse',
     log_alpha: float = 10.0,
     weight_sigma: float = 8.0,
@@ -164,13 +163,8 @@ def fit_with_validation(
         raise ValueError(f"unknown background mode {background!r}")
 
     # ---- model + optimizer
-    # `init_kwargs` is forwarded to the chosen strategy -- needed when the caller wants
-    # to seed from its OWN candidate list (e.g. the same detector output a baseline is
-    # scored against) rather than let the strategy run its own detector with its own,
-    # possibly voxel-space, settings.
     gs = init_gaussians(fit_volume, num_gaussians, strategy=init_strategy,
-                        init_scale=init_scale, seed=seed,
-                        **(init_kwargs or {})).to(device)
+                        init_scale=init_scale, seed=seed).to(device)
     project_parameterization(gs, parameterization)
     optimizer = build_optimizer(gs, parameterization=parameterization,
                                 lr_position=lr_position)
@@ -260,11 +254,6 @@ def fit_with_validation(
             # coverage initializer those are exactly the nucleus-seeded ones, so SUPPORT
             # Gaussians stay free to model broad tissue. A GLOBAL cap is confounded:
             # it pins the support population too and costs ~9.6 dB by itself.
-            # UNITS: `max_scale` is in VOXELS and the same limit is applied to all three
-            # axes, so on anisotropic data it is a different physical length per axis
-            # (Tribolium cap 10 = 6.9 um in xy but 30 um in z -- effectively an xy-only
-            # cap). Transferring it to another dataset means matching the xy extent in
-            # microns, not reusing the voxel number.
             with torch.no_grad():
                 lim = float(np.log(max_scale))
                 if max_scale_n is None:
