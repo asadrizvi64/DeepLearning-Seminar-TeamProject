@@ -1,0 +1,19 @@
+ROI (32, 416, 544) (64, 128, 128) | 29 HUMAN-annotated nuclei | 1 nucleus = 3.4 recall points
+pre-registered cap: 17 voxels (= 6.90 um xy, 34.5 um z)
+
+resuming: 2 fits already done: [('base', 0), ('cap', 0)]
+matched nuclei, v1 matcher -> fixed matcher:
+  raw              (457 cand)  @29 3->4  @50 5->5  @100 10->10  @200 18->18  @300 26->26  @500 26->26
+  downsample_x6    (164 cand)  @29 3->3  @50 4->5  @100 9->10  @200 9->11  @300 9->11  @500 9->11
+
+seeding 457 Gaussians at the top-500 RAW candidates (detector output, not annotation); 43 free fill
+
+  s0 uniform   matched @29=0 @50=5 @100=9 @200=23 @300=23 @500=23  (244 cand, val 21.85 dB, median seeded max-scale 7.9 vox)
+  s0 lr05_cap  matched @29=1 @50=1 @100=11 @200=17 @300=17 @500=17  (224 cand, val 21.44 dB, median seeded max-scale 7.1 vox, 0% at cap)
+  s0 lr05      matched @29=1 @50=1 @100=12 @200=17 @300=17 @500=17  (226 cand, val 21.45 dB, median seeded max-scale 7.1 vox)
+  s1 base      matched @29=5 @50=8 @100=15 @200=22 @300=22 @500=22  (237 cand, val 21.38 dB, median seeded max-scale 8.3 vox)
+  s1 cap       matched @29=6 @50=8 @100=15 @200=21 @300=21 @500=21  (239 cand, val 21.37 dB, median seeded max-scale 8.3 vox, 2% at cap)
+  s1 uniform   matched @29=5 @50=8 @100=13 @200=22 @300=22 @500=22  (239 cand, val 21.83 dB, median seeded max-scale 8.1 vox)
+  s1 lr05_cap  matched @29=2 @50=5 @100=10 @200=19 @300=19 @500=19  (225 cand, val 21.50 dB, median seeded max-scale 7.1 vox, 0% at cap)
+  s1 lr05      matched @29=2 @50=5 @100=10 @200=18 @300=18 @500=18  (224 cand, val 21.51 dB, median seeded max-scale 7.0 vox)
+  s2 base      matched @29=2 @50=7 @100=14 @200=21 @300=21 @500=21  (235 cand, val 21.49 dB, median seeded max-scale 8.3 vox)

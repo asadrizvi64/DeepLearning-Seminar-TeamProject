@@ -1,0 +1,21 @@
+ROI (32, 416, 544) (64, 128, 128) | 29 HUMAN-annotated nuclei | 1 nucleus = 3.4 recall points
+pre-registered cap: 17 voxels (= 6.90 um xy, 34.5 um z)
+
+matched nuclei, v1 matcher -> fixed matcher:
+  raw              (457 cand)  @29 3->4  @50 5->5  @100 10->10  @200 18->18  @300 26->26  @500 26->26
+  downsample_x6    (164 cand)  @29 3->3  @50 4->5  @100 9->10  @200 9->11  @300 9->11  @500 9->11
+
+seeding 457 Gaussians at the top-500 RAW candidates (detector output, not annotation); 43 free fill
+
+  s0 base      matched @29=2 @50=5 @100=13 @200=20 @300=20 @500=20  (230 cand, val 21.41 dB, median seeded max-scale 8.3 vox)
+  s0 cap       matched @29=2 @50=5 @100=13 @200=20 @300=20 @500=20  (223 cand, val 21.41 dB, median seeded max-scale 8.3 vox, 2% at cap)
+Traceback (most recent call last):
+  File "D:\masters\MLCV seminar\TeamProject\scripts\rerank_factorial.py", line 323, in <module>
+    main()
+  File "D:\masters\MLCV seminar\TeamProject\scripts\rerank_factorial.py", line 282, in main
+    gs, _, res = fit_with_validation(
+                 ^^^^^^^^^^^^^^^^^^^^
+  File "D:\masters\MLCV seminar\TeamProject\volsplat\ablation.py", line 236, in fit_with_validation
+    sel_int = train_idx[torch.multinomial(train_w, n_int, replacement=True)]
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: cannot sample n_sample <= 0 samples
