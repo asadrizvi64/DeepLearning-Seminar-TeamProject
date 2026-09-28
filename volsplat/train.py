@@ -66,7 +66,8 @@ def sample_training_points(
     # Intensity-weighted
     flat = volume_t.flatten() + eps
     flat = flat / flat.sum()
-    idx_int = torch.multinomial(flat, n_int, replacement=True)
+    idx_int = (torch.multinomial(flat, n_int, replacement=True) if n_int > 0
+               else torch.empty(0, dtype=torch.long, device=device))
     z_i = idx_int // (H * W)
     rem = idx_int % (H * W)
     y_i = rem // W

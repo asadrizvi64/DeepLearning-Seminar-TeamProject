@@ -222,6 +222,8 @@ def main():
     p.add_argument('--seeds', type=int, nargs='+', default=[0, 1, 2])
     p.add_argument('--arms', nargs='+', default=[a['name'] for a in ARMS])
     p.add_argument('--summarize-only', action='store_true')
+    p.add_argument('--resume', action='store_true',
+                   help='keep finished (arm, seed) fits from the saved CSV and skip them')
     args = p.parse_args()
     for sub in ('candidates', 'gaussians'):
         (OUT / sub).mkdir(parents=True, exist_ok=True)
@@ -250,6 +252,13 @@ def main():
           f'{CAP_VOX * V[0]:.1f} um z)\n', flush=True)
 
     rows = []
+    done_rows = []
+    if args.resume and (OUT / 'rerank_factorial.csv').exists():
+        prev = pd.read_csv(OUT / 'rerank_factorial.csv')
+        done_rows = prev[prev.seed >= 0].to_dict('records')
+    done = {(r['arm'], int(r['seed'])) for r in done_rows}
+    if done:
+        print(f'resuming: {len(done)} fits already done: {sorted(done)}', flush=True)
 
     def save_rows():
         pd.DataFrame(rows).to_csv(OUT / 'rerank_factorial.csv', index=False)
@@ -268,6 +277,7 @@ def main():
             rows.append(dict(arm=arm_name, seed=-1, **row))
             cells.append(f"@{n} {row['matched_v1_matcher']}->{row['matched']}")
         print(f'  {arm_name:16s} ({len(cand)} cand)  ' + '  '.join(cells), flush=True)
+    rows.extend(done_rows)
     save_rows()
 
     # ---- Gaussian arms, all seeded at the same top-K raw candidates, SEED-major
@@ -279,6 +289,8 @@ def main():
     specs = [a for a in ARMS if a['name'] in args.arms]
     for sd in args.seeds:
         for spec in specs:
+            if (spec['name'], sd) in done:
+                continue
             gs, _, res = fit_with_validation(
                 roi, num_gaussians=args.k, iterations=args.iters,
                 init_strategy='oracle_coverage', init_kwargs={'nuclei': seed_pts},

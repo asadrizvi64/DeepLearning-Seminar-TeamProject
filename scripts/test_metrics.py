@@ -348,6 +348,17 @@ def _():
     assert torch.equal(va, va2), 'split is not reproducible'
 
 
+@test('pure uniform sampling (intensity_bias=0) trains (real bug)')
+def _():
+    """BUG: n_int = 0 sent a zero-sample request to torch.multinomial, which raises --
+    it crashed the first uniform-sampling arm of the sampler-confound test."""
+    from volsplat.ablation import fit_with_validation
+    v = np.random.default_rng(0).uniform(0, 1, (8, 16, 16)).astype(np.float32)
+    for b in (0.0, 1.0):
+        fit_with_validation(v, num_gaussians=4, iterations=2, seed=0, intensity_bias=b,
+                            full_recon=False, eval_every=0)
+
+
 # ---------------------------------------------------------------- report
 
 def main():

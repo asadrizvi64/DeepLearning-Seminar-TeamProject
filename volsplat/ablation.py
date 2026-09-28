@@ -233,7 +233,10 @@ def fit_with_validation(
     t0 = time.time()
     for it in range(iterations):
         # --- sample a training batch from the TRAIN POOL ONLY (zero val leakage)
-        sel_int = train_idx[torch.multinomial(train_w, n_int, replacement=True)]
+        # intensity_bias=0 (pure uniform) must skip multinomial, which rejects a
+        # zero-sample request; for n_int > 0 the random stream is unchanged.
+        sel_int = (train_idx[torch.multinomial(train_w, n_int, replacement=True)]
+                   if n_int > 0 else train_idx[:0])
         sel_uni = train_idx[torch.randint(0, n_train, (n_uni,), device=device)]
         sel = torch.cat([sel_int, sel_uni])
         bx, by, bz = _flat_to_xyz(sel, H, W)
