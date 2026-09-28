@@ -148,7 +148,8 @@ def bisect_param(encode, lo, hi, target, increasing, iters=18):
 
 def jpeg2k(crop, target):
     enc = lambda q: (b := ic.jpeg2k_encode(crop, level=q), len(b))
-    q = bisect_param(enc, 30.0, 120.0, target, increasing=True)
+    # 5 dB floor: 30 dB was enough for 16-bit DRO but capped 8-bit CE at 23x
+    q = bisect_param(enc, 5.0, 120.0, target, increasing=True)
     b = ic.jpeg2k_encode(crop, level=q)
     return ic.jpeg2k_decode(b).astype(np.float32), len(b), {'level_db': q}
 
@@ -367,6 +368,9 @@ def main():
         for name in args.codecs:
             rec, nb, prm = CODECS[name](crop, tgt)
             prm['target_bytes'] = int(tgt)
+            # a codec may be unable to reach the target (JPEG-XL's maximum distance, ZFP's
+            # rate floor); flag it so matched-size comparisons can exclude that row
+            prm['size_matched'] = bool(abs(nb - tgt) <= 0.10 * tgt)
             add(name, rec, nb, prm)
     print(f'\nOutputs -> {out}')
 
