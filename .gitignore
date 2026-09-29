@@ -1,3 +1,8 @@
 # reconstructed volumes are large and regenerable from the fits/codecs
 runs/fidelity/*/recon/
 runs/fidelity/*/luxar/
+paper/*.log
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.out
