@@ -6,6 +6,7 @@
 #     sbatch scripts/hpc/fidelity_pilot.sbatch                     # DRO crop pilot
 #     sbatch --export=ALL,DATASET=CE,FRAME=150 scripts/hpc/fidelity_pilot.sbatch
 #     sbatch --export=ALL,DATASET=CE,FRAME=194 scripts/hpc/fidelity_pilot.sbatch
+#     sbatch --export=ALL,DATASET=CE,SEQ=02,FRAME=180 scripts/hpc/fidelity_pilot.sbatch
 # CE runs use the whole volume (every nucleus is labelled). Watch: squeue --me
 # Log: ls -t $(ws_find volsplat)/logs/ | head
 
@@ -28,11 +29,13 @@ trap 'cp -f /tmp/${SLURM_JOB_NAME}_${SLURM_JOB_ID}.out "$WS/logs/" 2>/dev/null |
 REPO="${REPO:-$SLURM_SUBMIT_DIR}"
 DATASET="${DATASET:-DRO}"
 FRAME="${FRAME:-0}"
+SEQ="${SEQ:-01}"
 if [ "$DATASET" = "CE" ]; then
     ROOT="${ROOT:-$WS/Fluo-N3DH-CE}"
-    SEEDS="${SEEDS:-1000 2000 4000 8000 16000 32000 64000}"
+    # budgets around the cliff seen on seq 01 (1-7 splats per nucleus) plus a plateau check
+    SEEDS="${SEEDS:-1000 1500 2000 3000 4000 8000}"
     WHERE="--full"
-    TAG="ce_t$(printf %03d "$FRAME")"
+    TAG="ce_s${SEQ}_t$(printf %03d "$FRAME")"
 else
     ROOT="${ROOT:-$WS/Fluo-N3DL-DRO}"
     SEEDS="${SEEDS:-250 500 1000 2000 4000 8000 16000}"
@@ -49,7 +52,7 @@ nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
 python -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available())"
 
 python "$REPO/scripts/fidelity/rate_detectability.py" \
-    --out "$OUT" --dataset "$DATASET" --root "$ROOT" --frame "$FRAME" $WHERE \
+    --out "$OUT" --dataset "$DATASET" --root "$ROOT" --frame "$FRAME" --seq "$SEQ" $WHERE \
     --device cuda --n-iters 1000 --luxar-seeds $SEEDS
 
 echo "Results: $OUT/rate_detectability.csv"
