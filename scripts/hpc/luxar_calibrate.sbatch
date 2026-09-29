@@ -7,7 +7,8 @@
 #     sbatch --export=ALL,SEQ=01,FRAME=194 scripts/hpc/luxar_calibrate.sbatch
 
 #SBATCH --job-name=luxar-cal
-#SBATCH --partition=alpha
+# no --partition: each cluster (Alpha, Capella) uses its default GPU partition;
+# override with  sbatch -p <partition> ...
 #SBATCH --account=p_scads_mlhpc
 #SBATCH --nodes=1
 #SBATCH --ntasks=1

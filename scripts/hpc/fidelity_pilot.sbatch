@@ -11,7 +11,8 @@
 # Log: ls -t $(ws_find volsplat)/logs/ | head
 
 #SBATCH --job-name=fidelity-pilot
-#SBATCH --partition=alpha
+# no --partition: each cluster (Alpha, Capella) uses its default GPU partition;
+# override with  sbatch -p <partition> ...
 #SBATCH --account=p_scads_mlhpc
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
