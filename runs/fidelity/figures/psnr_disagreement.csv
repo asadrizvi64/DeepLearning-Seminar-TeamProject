@@ -1,0 +1,4 @@
+group,n_reconstructions,psnr_separated_pairs,psnr_wrong_about_faint,share_wrong,kendall_tau_psnr_vs_faint
+CE t150,36,527,92,0.175,0.551
+CE t194,36,535,68,0.127,0.65
+DRO t000,35,543,149,0.274,0.227
