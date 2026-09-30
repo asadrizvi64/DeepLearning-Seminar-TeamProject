@@ -1,0 +1,180 @@
+{
+  "k_values_requested": [
+    1000,
+    2000,
+    4000,
+    8000,
+    16000,
+    32000,
+    64000
+  ],
+  "k_values_effective": [
+    369,
+    1051,
+    2688,
+    5915,
+    11251,
+    20611,
+    41495
+  ],
+  "held_out_psnr_db": [
+    20.889317532285286,
+    21.249102800891247,
+    21.31178255385365,
+    21.233339308693363,
+    21.49149501785552,
+    21.620091118637262,
+    22.12986185204524
+  ],
+  "train_psnr_db": [
+    20.893861325053628,
+    21.27799902015137,
+    21.380514509149098,
+    21.35396533986189,
+    21.694175769286566,
+    21.93818176327566,
+    22.736777165021568
+  ],
+  "held_out_mse": [
+    438.5753479003906,
+    403.7064514160156,
+    397.9217834472656,
+    405.1744384765625,
+    381.79168701171875,
+    370.6524353027344,
+    329.6019592285156
+  ],
+  "full_psnr_db": [
+    20.893635749816895,
+    21.27655029296875,
+    21.377055644989014,
+    21.347858905792236,
+    21.68382167816162,
+    21.921725273132324,
+    22.704358100891113
+  ],
+  "full_ssim": [
+    0.37516210230710395,
+    0.3900941506181577,
+    0.39746441169419744,
+    0.3992942271030491,
+    0.41406862521261656,
+    0.4312183929040286,
+    0.4758435027797121
+  ],
+  "held_out_peak": {
+    "k_star": 64000,
+    "type": "signal_limited",
+    "confidence_db": 1.2405443197599553,
+    "k_knee": 64000,
+    "knee_idx": 6,
+    "drop_after_peak_db": 0.0,
+    "tail_rise_db": 0.2988408477839594,
+    "plateau_spread_db": 0.0,
+    "total_rise_db": 1.2405443197599553,
+    "still_climbing": true,
+    "knee_margin_db": 0.3
+  },
+  "noise_floor": {
+    "sigma_hat": 0.0,
+    "sigma_laplacian": 0.009860647268810281,
+    "sigma_haar": 0.0,
+    "sigma_background": 0.0,
+    "psnr_max_db": null
+  },
+  "fit_times_seconds": [
+    727.5557294970001,
+    949.5762086299999,
+    1294.5000920760003,
+    1215.016088366,
+    1349.2602578669994,
+    1163.58757961,
+    1073.8661112369991
+  ],
+  "splat_paths": [
+    "/data/horse/ws/syas272h-volsplat/runs/fidelity/calibrate_ce_s01_t150/fits/k00001000.gsplats.zarr",
+    "/data/horse/ws/syas272h-volsplat/runs/fidelity/calibrate_ce_s01_t150/fits/k00002000.gsplats.zarr",
+    "/data/horse/ws/syas272h-volsplat/runs/fidelity/calibrate_ce_s01_t150/fits/k00004000.gsplats.zarr",
+    "/data/horse/ws/syas272h-volsplat/runs/fidelity/calibrate_ce_s01_t150/fits/k00008000.gsplats.zarr",
+    "/data/horse/ws/syas272h-volsplat/runs/fidelity/calibrate_ce_s01_t150/fits/k00016000.gsplats.zarr",
+    "/data/horse/ws/syas272h-volsplat/runs/fidelity/calibrate_ce_s01_t150/fits/k00032000.gsplats.zarr",
+    "/data/horse/ws/syas272h-volsplat/runs/fidelity/calibrate_ce_s01_t150/fits/k00064000.gsplats.zarr"
+  ],
+  "mask_seed": 42,
+  "mask_fraction": 0.05,
+  "donut_radius": 1,
+  "fit_config": {
+    "device": "cuda",
+    "verbose": false,
+    "n_iters": 1000,
+    "voxel_size": [
+      1.0,
+      0.09,
+      0.09
+    ],
+    "output_space": "voxel",
+    "floor": "none",
+    "floor_subtracted": 23.0
+  },
+  "volume_shape": [
+    35,
+    512,
+    708
+  ],
+  "volume_dtype": "float32",
+  "timestamp": "2026-09-30T12:14:14.416714+00:00",
+  "held_out_psnr_fg_db": [
+    12.065008641030124,
+    12.549126869422562,
+    12.641363955270606,
+    12.518878153103245,
+    12.901438039151492,
+    13.06555883872818,
+    13.636104471007888
+  ],
+  "held_out_psnr_fg_weighted_db": [
+    15.856101008965693,
+    16.45026315153376,
+    16.605511437461576,
+    16.56803600850566,
+    16.98074431309151,
+    17.240313739318157,
+    17.803903751084928
+  ],
+  "foreground_mask_fraction": 0.09079879502118644,
+  "foreground_otsu_threshold": 48.482269287109375,
+  "fg_bg_ratio": 1.0,
+  "held_out_gain_db": [
+    4.814534984998296,
+    5.174320253604261,
+    5.2370000065666655,
+    5.158556761406378,
+    5.416712470568534,
+    5.545308571350275,
+    6.055079304758252
+  ],
+  "predict_zero_baseline_mse": 1328.9165652999116,
+  "k_star_metric": "psnr_minmax",
+  "held_out_peak_selected": null,
+  "calibration_region": null,
+  "original_volume_shape": null,
+  "splat_density": {
+    "feature_method": "peaks",
+    "n_features_reference": 26204,
+    "k_star_reference": 41495,
+    "saturation_exponent": 0.44,
+    "saturation_cap": 41495,
+    "splats_per_feature": 1.5835368646008243,
+    "feature_threshold": 22.306250000000002
+  },
+  "rd_model": {
+    "floor": 3.682273906118608e-18,
+    "a": 577.1760190528631,
+    "beta": 0.04665387732932031,
+    "rmse": 13.08445306260987,
+    "n_points": 7,
+    "converged_fraction": 0.19774150388526537
+  },
+  "not_converged": true,
+  "exponent_fit": null
+}

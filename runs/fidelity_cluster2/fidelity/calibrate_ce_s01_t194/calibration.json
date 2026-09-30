@@ -1,0 +1,180 @@
+{
+  "k_values_requested": [
+    1000,
+    2000,
+    4000,
+    8000,
+    16000,
+    32000,
+    64000
+  ],
+  "k_values_effective": [
+    399,
+    1191,
+    2665,
+    5661,
+    11280,
+    21138,
+    42875
+  ],
+  "held_out_psnr_db": [
+    19.703390090279942,
+    20.149416725043487,
+    20.25304076563959,
+    20.166537325620713,
+    20.525309155408202,
+    20.728483160307366,
+    21.19342340692573
+  ],
+  "train_psnr_db": [
+    19.693811455801505,
+    20.161546486762006,
+    20.2889852922773,
+    20.248092674072332,
+    20.697512066274196,
+    21.016303640799514,
+    21.765327532256393
+  ],
+  "held_out_mse": [
+    576.4349365234375,
+    520.1727905273438,
+    507.908203125,
+    518.126220703125,
+    477.0439453125,
+    455.2406005859375,
+    409.02227783203125
+  ],
+  "full_psnr_db": [
+    19.694288969039917,
+    20.160939693450928,
+    20.287182331085205,
+    20.243980884552002,
+    20.688745975494385,
+    21.001462936401367,
+    21.73489809036255
+  ],
+  "full_ssim": [
+    0.3700076199499994,
+    0.39252774004269453,
+    0.40092492494206555,
+    0.40650983458715284,
+    0.4237039806390484,
+    0.443249980022603,
+    0.4855546866973367
+  ],
+  "held_out_peak": {
+    "k_star": 64000,
+    "type": "signal_limited",
+    "confidence_db": 1.490033316645789,
+    "k_knee": 64000,
+    "knee_idx": 6,
+    "drop_after_peak_db": 0.0,
+    "tail_rise_db": 0.3422953604350063,
+    "plateau_spread_db": 0.0,
+    "total_rise_db": 1.490033316645789,
+    "still_climbing": true,
+    "knee_margin_db": 0.3
+  },
+  "noise_floor": {
+    "sigma_hat": 9.671751928589604e-05,
+    "sigma_laplacian": 0.012787320689762797,
+    "sigma_haar": 9.671751928589604e-05,
+    "sigma_background": 0.0,
+    "psnr_max_db": 80.28989702505136
+  },
+  "fit_times_seconds": [
+    814.4118547100002,
+    1114.4319182200002,
+    1451.406205418,
+    1434.7621205679998,
+    1441.2012327889997,
+    1328.0345796350002,
+    1225.3768058170008
+  ],
+  "splat_paths": [
+    "/data/horse/ws/syas272h-volsplat/runs/fidelity/calibrate_ce_s01_t194/fits/k00001000.gsplats.zarr",
+    "/data/horse/ws/syas272h-volsplat/runs/fidelity/calibrate_ce_s01_t194/fits/k00002000.gsplats.zarr",
+    "/data/horse/ws/syas272h-volsplat/runs/fidelity/calibrate_ce_s01_t194/fits/k00004000.gsplats.zarr",
+    "/data/horse/ws/syas272h-volsplat/runs/fidelity/calibrate_ce_s01_t194/fits/k00008000.gsplats.zarr",
+    "/data/horse/ws/syas272h-volsplat/runs/fidelity/calibrate_ce_s01_t194/fits/k00016000.gsplats.zarr",
+    "/data/horse/ws/syas272h-volsplat/runs/fidelity/calibrate_ce_s01_t194/fits/k00032000.gsplats.zarr",
+    "/data/horse/ws/syas272h-volsplat/runs/fidelity/calibrate_ce_s01_t194/fits/k00064000.gsplats.zarr"
+  ],
+  "mask_seed": 42,
+  "mask_fraction": 0.05,
+  "donut_radius": 1,
+  "fit_config": {
+    "device": "cuda",
+    "verbose": false,
+    "n_iters": 1000,
+    "voxel_size": [
+      1.0,
+      0.09,
+      0.09
+    ],
+    "output_space": "voxel",
+    "floor": "none",
+    "floor_subtracted": 22.9697265625
+  },
+  "volume_shape": [
+    35,
+    512,
+    708
+  ],
+  "volume_dtype": "float32",
+  "timestamp": "2026-09-30T12:31:30.344705+00:00",
+  "held_out_psnr_fg_db": [
+    11.84848777079277,
+    12.423094117156632,
+    12.575799166231212,
+    12.43276769263833,
+    12.967801702007986,
+    13.219895746743816,
+    13.752328922499881
+  ],
+  "held_out_psnr_fg_weighted_db": [
+    15.496648789644558,
+    16.15533759061667,
+    16.342618074823612,
+    16.277132494583597,
+    16.78456147863021,
+    17.078110382057893,
+    17.589517388224674
+  ],
+  "foreground_mask_fraction": 0.1271000428773204,
+  "foreground_otsu_threshold": 52.62214660644531,
+  "fg_bg_ratio": 1.0,
+  "held_out_gain_db": [
+    5.323020955732342,
+    5.769047590495884,
+    5.872671631091986,
+    5.786168191073111,
+    6.144940020860598,
+    6.348114025759765,
+    6.813054272378131
+  ],
+  "predict_zero_baseline_mse": 1963.5971369480485,
+  "k_star_metric": "psnr_minmax",
+  "held_out_peak_selected": null,
+  "calibration_region": null,
+  "original_volume_shape": null,
+  "splat_density": {
+    "feature_method": "peaks",
+    "n_features_reference": 25591,
+    "k_star_reference": 42875,
+    "saturation_exponent": 0.44,
+    "saturation_cap": 42875,
+    "splats_per_feature": 1.675393693095229,
+    "feature_threshold": 23.02333984375
+  },
+  "rd_model": {
+    "floor": 5.970948409639418e-17,
+    "a": 830.6660215520201,
+    "beta": 0.06138940540766435,
+    "rmse": 16.018032483375023,
+    "n_points": 7,
+    "converged_fraction": 0.24958082617504684
+  },
+  "not_converged": true,
+  "exponent_fit": null
+}
