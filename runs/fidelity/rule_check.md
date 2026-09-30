@@ -1,9 +1,9 @@
 # Rule check (radius 0.6 D)
 
 ## 1a. Detector dependence replicates on embryo 2
-- s02 t150: NOT EVALUABLE -- Luxar fits in 55-94x: 0, JPEG-XL: 1
-- s02 t180: NOT EVALUABLE -- Luxar fits in 55-94x: 0, JPEG-XL: 1
-**Verdict: NOT EVALUABLE**
+- s02 t150: JPEG-XL 0.987 vs Luxar 0.901 -> gap 8.6 points
+- s02 t180: JPEG-XL 0.956 vs Luxar 0.893 -> gap 6.3 points
+**Verdict: REPLICATES**
 
 ## 1b. Beyond 120x, Luxar keeps more nuclei than JPEG2000 (embryo 2, both detectors)
 - s02 t150 LoG: Luxar 269x 1.03 vs JPEG2000 221x 0.53 
@@ -31,8 +31,8 @@
 - s01 t100: 3.1/nuc 1.10, 6.5/nuc 1.10, 10.4/nuc 1.08, 17.2/nuc 1.07, 26.0/nuc 1.07, 58.7/nuc 1.06
 - s01 t150: 1.7/nuc 0.87, 5.5/nuc 0.97, 13.3/nuc 1.01, 30.2/nuc 1.00, 56.4/nuc 1.01, 103.7/nuc 1.00, 209.1/nuc 1.01
 - s01 t194: 1.0/nuc 0.67, 3.2/nuc 0.91, 7.3/nuc 0.96, 16.4/nuc 0.97, 30.9/nuc 0.98, 56.6/nuc 1.00, 114.9/nuc 1.01
-- s02 t150: 2.3/nuc 0.85, 4.1/nuc 0.98, 6.0/nuc 1.01, 9.6/nuc 1.03, 13.3/nuc 1.03, 30.3/nuc 1.03
-- s02 t180: 1.3/nuc 0.66, 2.3/nuc 0.87, 3.4/nuc 0.93, 5.4/nuc 0.99, 7.5/nuc 1.01, 16.9/nuc 1.02
+- s02 t150: 2.3/nuc 0.85, 4.1/nuc 0.98, 6.0/nuc 1.01, 9.6/nuc 1.03, 13.3/nuc 1.03, 30.3/nuc 1.03, 53.6/nuc 1.04, 115.0/nuc 1.04
+- s02 t180: 1.3/nuc 0.66, 2.3/nuc 0.87, 3.4/nuc 0.93, 5.4/nuc 0.99, 7.5/nuc 1.01, 16.9/nuc 1.02, 29.7/nuc 1.03, 63.9/nuc 1.04
 **Verdict (frame 100): NOT CONTRADICTED -- never below 90% (lowest budget 3.1/nuc)**
 
 ## 3. Luxar's own budget K*
