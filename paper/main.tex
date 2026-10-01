@@ -13,6 +13,7 @@
 \usepackage[hidelinks]{hyperref}
 \newcommand{\todo}[1]{\textcolor{orange}{[TODO: #1]}}
 \input{numbers}
+\input{numbers_ci}
 
 \begin{document}
 
@@ -151,8 +152,9 @@ with a size match). Match radius $0.6D$.}
 
 \textbf{Hand-chosen budgets.} Below $K^\ast$, splats reach ratios no codec matches. At
 $\approx$\SI{230}{\times} Luxar keeps \LuxHighLoG{} (LoG) and \LuxHighCP{} (Cellpose) of
-nuclei, against \JtkHighLoG{} and \JtkHighCP{} for JPEG2000, on both embryos. The advantage
-is not uniform: at \SIrange{110}{135}{\times} on embryo~2, JPEG2000 at \SI{110}{\times} keeps
+nuclei, against \JtkHighLoG{} and \JtkHighCP{} for JPEG2000, on both embryos; 95\% bootstrap
+intervals over nuclei exclude zero on \HiLoGCIfrac{} frames for LoG but only \HiCPCIfrac{} for
+Cellpose (embryo~1 t150 is unresolved). The advantage is not uniform: at \SIrange{110}{135}{\times} on embryo~2, JPEG2000 at \SI{110}{\times} keeps
 \RevJtkCP{} under Cellpose versus \RevLuxCP{} for Luxar, so our pre-registered claim
 ``Luxar leads beyond \SI{120}{\times}'' is narrowed to $\approx$\SI{200}{\times} and beyond.
 Loss then sets in abruptly once splats become scarce (Fig.~\ref{fig:cliff}): on all four
@@ -171,7 +173,8 @@ fit (dashed: E1 t100, whose smallest budget has 3.1 splats per nucleus).}
 
 \textbf{Detector dependence.} With the blob detector, Luxar keeps \LuxMidLoG{} of nuclei at
 \SIrange{45}{94}{\times}; with Cellpose only \LuxMidCP, \GapRange{} points below JPEG-XL at
-the same ratios, on all \GapFrames{} frames. The two detectors need very different budgets
+the same ratios, on all \GapFrames{} frames (95\% bootstrap intervals exclude zero on
+\GapCIfrac, one only narrowly). The two detectors need very different budgets
 (Fig.~\ref{fig:cliff}): the blob detector recovers every nucleus once there are $\approx$3--5
 splats per nucleus, whereas Cellpose stays at 80--90\% from $\approx$5 to 50 splats per
 nucleus and approaches the codecs only at $\approx$100 or more---the regime of Luxar's own
