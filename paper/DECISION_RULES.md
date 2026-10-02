@@ -75,3 +75,10 @@ JPEG2000 crossings in section 4) is re-evaluated unchanged on the corrected base
 is also encoded at the exact byte size of every Luxar fit. The v1.0 verdicts that involved
 JPEG2000 are void, not "replicated" or "failed". Only the PSNR of the corrected codec on
 one frame was seen before this note was written.
+
+**Baseline fairness audit (same day).** Downsampling stored the 8-bit data as uint16 and
+reduced z by the same factor as xy although z is already 11x coarser; ZFP ran in fixed-rate
+mode on float32 copies of 8-bit data. Both are naive configurations, so they are dropped from
+the paper's comparisons rather than tuned after the fact; their rows remain in the results
+table. JPEG-XL's ceiling (about 82-118x) is the encoder's maximum distance (25) without its
+optional resampling, so the paper says "at its maximum distance", not "cannot exceed".
