@@ -82,3 +82,19 @@ mode on float32 copies of 8-bit data. Both are naive configurations, so they are
 the paper's comparisons rather than tuned after the fact; their rows remain in the results
 table. JPEG-XL's ceiling (about 82-118x) is the encoder's maximum distance (25) without its
 optional resampling, so the paper says "at its maximum distance", not "cannot exceed".
+
+## 5. Luxar vs JPEG2000 at exactly the same bytes (added 2026-10-02, after the fix)
+
+Seen before writing this: on E2 t180, LoG at 0.4 D and survival from the run files (JPEG2000
+>= Luxar at all four sizes from 260x to 434x), and E1 t194 survival for JPEG2000 only. No
+Cellpose, watershed or 0.6 D score of the corrected JPEG2000 had been seen.
+
+- Every Luxar fit is paired with the JPEG2000 encoding of the same size (within 2%), per
+  frame and detector, with a paired 95% bootstrap interval over labelled nuclei of
+  kept(Luxar) - kept(JPEG2000) (scripts/fidelity/matched_pairs.py, 0.6 D).
+- The paper may say that splats beat JPEG2000 only for frame/detector/size combinations whose
+  interval lies above zero, and must name them.
+- "JPEG2000 keeps at least as many nuclei as Gaussian splats at every matched size" holds if
+  no combination has its interval above zero, on the v1.0 frames now and the A1 frames
+  when they arrive.
+- The counts (JPEG2000 better / no difference / Luxar better) are reported per detector.
