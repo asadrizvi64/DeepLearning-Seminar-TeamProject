@@ -147,11 +147,20 @@ def bisect_param(encode, lo, hi, target, increasing, iters=18):
 
 
 def jpeg2k(crop, target):
-    enc = lambda q: (b := ic.jpeg2k_encode(crop, level=q), len(b))
+    """JPEG2000 (OpenJPEG), 2D wavelet per xy slice, all slices as the components of ONE
+    codestream (global rate allocation, one header) -- the 2D counterpart of JPEG-XL here.
+
+    BUG FIXED 2026-10-02: the volume used to be passed as (z, y, x); imagecodecs reads a 3D
+    array as (height, width, components), so the codestream was a z-y image with one
+    component per x column and the wavelet never ran along x. That baseline was far too weak
+    (E2 t150, 50 KiB: 12.5 dB instead of 23.1 dB). Every JPEG2000 result before this fix
+    (tag study-a-v1.0) is superseded."""
+    zyx = np.ascontiguousarray(np.moveaxis(crop, 0, -1))          # (y, x, z): z = components
+    enc = lambda q: (b := ic.jpeg2k_encode(zyx, level=q), len(b))
     # 5 dB floor: 30 dB was enough for 16-bit DRO but capped 8-bit CE at 23x
     q = bisect_param(enc, 5.0, 120.0, target, increasing=True)
-    b = ic.jpeg2k_encode(crop, level=q)
-    return ic.jpeg2k_decode(b).astype(np.float32), len(b), {'level_db': q}
+    b = ic.jpeg2k_encode(zyx, level=q)
+    return np.moveaxis(ic.jpeg2k_decode(b), -1, 0).astype(np.float32), len(b), {'level_db': q, 'layout': 'xy-slices-as-components'}
 
 
 def jpegxl(crop, target):

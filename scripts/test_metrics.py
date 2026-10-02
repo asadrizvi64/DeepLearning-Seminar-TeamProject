@@ -359,6 +359,36 @@ def _():
                             full_recon=False, eval_every=0)
 
 
+@test('JPEG2000 wavelet runs over x and y, not z-y (real bug)')
+def _():
+    """BUG: the (z, y, x) volume went straight to imagecodecs.jpeg2k_encode, which reads it
+    as a z-y image with one component per x column; the wavelet never ran along x and the
+    JPEG2000 baseline lost ~10 dB at 220x, inflating the splats-beat-JPEG2000 claim."""
+    import importlib.util, struct
+    from pathlib import Path
+    spec = importlib.util.spec_from_file_location(
+        'rd', Path(__file__).resolve().parent / 'fidelity' / 'rate_detectability.py')
+    rd = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rd)
+    import imagecodecs as ic
+    vol = (np.random.default_rng(0).random((5, 24, 40)) * 200).astype(np.uint8)
+    seen = {}
+    real = ic.jpeg2k_encode
+    def spy(a, **kw):
+        b = real(a, **kw)
+        i = b.find(bytes([0xFF, 0x51]))      # SIZ marker
+        _, _, X, Y = struct.unpack('>HHII', b[i + 2:i + 14])
+        seen['siz'] = (X, Y, struct.unpack('>H', b[i + 38:i + 40])[0])
+        return b
+    rd.ic.jpeg2k_encode = spy
+    try:
+        rec, _, _ = rd.jpeg2k(vol, 2000)
+    finally:
+        rd.ic.jpeg2k_encode = real
+    assert seen['siz'] == (40, 24, 5), f'codestream (width, height, components) = {seen["siz"]}'
+    assert rec.shape == vol.shape
+
+
 # ---------------------------------------------------------------- report
 
 def main():

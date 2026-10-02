@@ -63,3 +63,15 @@ frames count against the 6-of-8 threshold. The A1 PSNR rule still uses K=1000-16
 Codecs: JPEG2000 and JPEG-XL only (the two the paper's claims rest on), at 50, 100, 200, 400
 and 800 KiB, plus at each Luxar fit's byte size once those are known. The 95% and 90%
 crossings are reported for every method and detector, as descriptive results.
+
+## Baseline correction (2026-10-02, before any corrected detection result was seen)
+
+The JPEG2000 baseline of v1.0 (tag `study-a-v1.0`) was mis-configured: the (z, y, x)
+volume was passed to OpenJPEG as a z-y image with one component per x column, so the
+wavelet never ran along x (E2 t150 at 50 KiB: 12.5 dB instead of 23.1 dB). It is replaced
+by a 2D wavelet per xy slice, with all slices as components of one codestream, the 2D
+counterpart of the per-slice JPEG-XL. Every rule that involves JPEG2000 (1b, and the
+JPEG2000 crossings in section 4) is re-evaluated unchanged on the corrected baseline. JPEG2000
+is also encoded at the exact byte size of every Luxar fit. The v1.0 verdicts that involved
+JPEG2000 are void, not "replicated" or "failed". Only the PSNR of the corrected codec on
+one frame was seen before this note was written.
