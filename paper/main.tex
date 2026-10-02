@@ -37,8 +37,8 @@ $\approx$\KstarRatio{} to \JtkMaxRatio, a correctly configured JPEG2000 has high
 for both segmenters, keeps at least as many nuclei as the splats---significantly more in
 \PairsJWatershed{} of \PairsNWatershed{} (watershed) and \PairsJCellpose{} of
 \PairsNCellpose{} (Cellpose) size-matched pairs. Only the blob detector, which the splats'
-smooth blobs suit, finds slightly more nuclei in splat reconstructions (by \LuxAdvPts{}
-points, at \LuxAdvRatio{} on one embryo). Below $\approx$2 splats per nucleus the splats lose
+smooth blobs suit, finds more nuclei in some splat reconstructions (by \LuxAdvPts{}
+points at \LuxAdvRatio{} on one embryo, and on an early frame whose nuclei are larger). Below $\approx$2 splats per nucleus the splats lose
 nuclei abruptly, while their PSNR stays within \LuxPSNRrange. Gaussian splats are not a
 better storage format for this analysis than a standard wavelet codec; object-level,
 size-matched evaluation against a verified codec baseline should accompany such claims.
@@ -67,9 +67,9 @@ human labels, three detector families, paired bootstrap intervals over nuclei, a
 rules committed before each new measurement. (ii)~At identical bytes, JPEG2000 keeps at least
 as many nuclei as Gaussian splats for both segmenters at every size we tested, and loses only
 marginally to them under a blob detector at moderate ratios; Luxar's own budget is safe, but
-so is the codec at the same bytes. (iii)~Splat reconstructions cost \emph{segmenters}---learned
-or classical---recall that blob detection does not reveal, and lose nuclei abruptly below
-$\approx$2 splats per nucleus with no PSNR signal. (iv)~A baseline pitfall: a common JPEG2000
+so is the codec at the same bytes. (iii)~Splat reconstructions cost a learned segmenter
+recall that blob detection does not reveal (a classical watershed loses less), and lose nuclei
+abruptly below $\approx$2 splats per nucleus with no PSNR signal. (iv)~A baseline pitfall: a common JPEG2000
 binding silently encodes a 3D array along the wrong axes, which had reversed our own
 high-ratio conclusion.
 
@@ -150,11 +150,12 @@ for the LoG blob detector, the 3D watershed and Cellpose, on four frames from tw
 \textbf{Splats vs.\ JPEG2000 at identical bytes.} Table~\ref{tab:main} pairs every Luxar fit
 with the JPEG2000 encoding of the same size. For the segmenters, JPEG2000 keeps significantly
 more nuclei in \PairsJWatershed{} of \PairsNWatershed{} pairs (watershed) and \PairsJCellpose{}
-of \PairsNCellpose{} (Cellpose), and Luxar significantly more in \PairsLWatershed{} and
-\PairsLCellpose. Under the blob detector, Luxar keeps \LuxAdvPts{} points more at
+of \PairsNCellpose{} (Cellpose), and never fewer. Under the blob detector, Luxar keeps \LuxAdvPts{} points more at
 \LuxAdvRatio{} on \LuxAdvFrames{} (its smooth blobs act as a denoiser for a blob filter; kept
 exceeds 1), but beyond \SI{300}{\times} it keeps \FarLuxLoG{} against \FarJtkLoG{} for
-JPEG2000. JPEG2000 also has the higher PSNR in \PSNRjtkWins{} size-matched pairs.
+JPEG2000. On E1 t100, whose early-stage nuclei are larger than our fixed $D$, the blob
+detector's advantage on splats grows to \EarlyAdvPts{} points at \EarlyAdvRatio, while
+neither segmenter favours Luxar in any pair there. JPEG2000 also has the higher PSNR in \PSNRjtkWins{} size-matched pairs.
 
 \begin{table}[t]
 \centering
@@ -162,6 +163,7 @@ JPEG2000. JPEG2000 also has the higher PSNR in \PSNRjtkWins{} size-matched pairs
 frames; superscript: fewer frames) and PSNR (dB). Bold: every pair's 95\% interval lies on
 the same side of zero. Match radius $0.6D$.}
 \label{tab:main}
+\setlength{\tabcolsep}{4pt}
 \input{table_main}
 \end{table}
 
@@ -187,15 +189,17 @@ fit, per detector (dashed: E1 t100).}
 \end{figure}
 
 \textbf{Detector dependence.} At \SIrange{45}{94}{\times} the blob detector keeps
-\LuxMidLoG{} of nuclei in Luxar reconstructions, but both segmenters lose more: Cellpose keeps
-\LuxMidCP{} (\GapCP{} points below JPEG-XL at the same ratios, all \GapFramesCP{} frames; 95\%
-intervals exclude zero on \GapCIfrac) and the watershed \LuxMidWS{} (\GapWS{} points below;
-on \GapWSCIfrac).
-The penalty is therefore not specific to a learned model: a reconstruction of smooth blobs on
-a black background (Fig.~\ref{fig:qual}) changes what a segmenter sees as foreground and
-boundary, while a blob filter is indifferent to it. The blob detector recovers every nucleus
-once there are $\approx$3--5 splats per nucleus; the segmenters need far more
-(Fig.~\ref{fig:cliff}). Cellpose's scores move by up to \CPwobble{} points between
+\LuxMidLoG{} of nuclei in Luxar reconstructions, while Cellpose keeps only \LuxMidCP{}:
+\GapCP{} points below JPEG-XL at the same ratios on all \GapFramesCP{} frames (95\% intervals
+exclude zero on \GapCIfrac). The classical watershed sits in between, at \LuxMidWS{} and
+\GapWS{} points below JPEG-XL---consistently (intervals above zero on \GapWSCIfrac) but under
+the 5-point threshold we fixed in advance on three of four frames. The large penalty is thus
+specific to the learned segmenter: smooth blobs on a black background (Fig.~\ref{fig:qual})
+lie outside the images it was trained on, whereas a blob filter is indifferent to them. Both
+segmenters nonetheless favour JPEG2000 at identical bytes, and the watershed's deficit grows
+with compression (Table~\ref{tab:main}). The blob detector recovers every nucleus once there
+are $\approx$3--5 splats per nucleus; Cellpose needs tens to over a hundred, and on one frame
+never reaches 90\% (Fig.~\ref{fig:cliff}). Cellpose's scores move by up to \CPwobble{} points between
 neighbouring sizes of the same codec, so single comparisons are noisy, but the sign is
 consistent across frames and embryos. Luxar itself is reproducible: three independent fits of
 E1 t194 at each of three budgets differ by at most \RepLoG{} (LoG), \RepWatershed{} (watershed)
@@ -212,7 +216,8 @@ nuclei kept near \SI{90}{\times} (mean).}
 \section{Discussion and Limitations}
 On this data, at identical stored bytes, Gaussian splats are not a better format for nuclear
 analysis than a standard wavelet codec: JPEG-XL is nearly lossless to $\approx$\SI{100}{\times}
-and JPEG2000 keeps more nuclei, for both segmenters, at every larger ratio we tested. Splats
+and JPEG2000 keeps at least as many nuclei, for both segmenters, at every larger ratio we
+tested. Splats
 remain attractive for what Luxar designs them for---continuous, GPU-native rendering---and a
 blob detector tolerates them well. We recommend (i)~comparing Gaussian volume compression
 with a verified codec baseline at identical bytes, (ii)~reporting object-level recall with
@@ -221,15 +226,15 @@ level before trusting it (survival is a label-free start).
 
 Limitations: one organism (two embryos, five frames); Cellpose in its 2D-stitched mode; one
 Gaussian compressor at default settings (tuned or entropy-coded splats may fare better); a
-2D-per-slice JPEG2000 (a 3D wavelet would likely be stronger still); the calibration
-evaluated on embryo~1 only; and larger early-embryo nuclei (t100) that fit our fixed $D$ less
-well. The same audit for small low-contrast lesions in CT is future work.
+2D-per-slice JPEG2000 (a 3D wavelet would likely be stronger still); Luxar's recommended
+budget scored on embryo~1 only (its calibration on embryo~2 also recommends
+$K^\ast=\Kstar$); and larger early-embryo nuclei (t100) that fit our fixed $D$ less well. The same audit for small low-contrast lesions in CT is future work.
 
 \section{Conclusion}
 Measured at identical bytes against human labels, Gaussian-splat compression keeps nuclei
 well at its own budget but no better than JPEG2000 at any budget for segmentation, loses
-them abruptly below a budget PSNR cannot identify, and costs segmenters recall that a blob
-detector does not show. Object-level, size-matched evaluation against verified codec
+them abruptly below a budget PSNR cannot identify, and costs a learned segmenter recall that
+a blob detector does not show. Object-level, size-matched evaluation against verified codec
 baselines should accompany Gaussian volume compression.
 
 \bibliographystyle{IEEEtran}

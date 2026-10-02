@@ -162,7 +162,14 @@ def main():
         N['LuxAdvPts'] = f"{100 * adv['diff'].min():.0f}--{100 * adv['diff'].max():.0f}"
         N['LuxAdvRatio'] = times(adv.ratio.min(), adv.ratio.max())
         N['LuxAdvFrames'] = ', '.join(sorted(adv.frame.unique()))
-    N['PSNRjtkWins'] = f"{int((pj.drop_duplicates(['frame', 'method']).psnr_codec > pj.drop_duplicates(['frame', 'method']).psnr_lux).sum())} of {pj.drop_duplicates(['frame', 'method']).shape[0]}"
+    early = pairs[(pairs.codec == 'jpeg2k') & (pairs.fr == ('s01', 100)) & (pairs.detector == 'log') & (pairs.lo > 0)]
+    if len(early):
+        N['EarlyAdvPts'] = f"{100 * early['diff'].min():.0f}--{100 * early['diff'].max():.0f}"
+        N['EarlyAdvRatio'] = times(early.ratio.min(), early.ratio.max())
+    for det, name in (('watershed', 'Watershed'), ('cellpose', 'Cellpose')):
+        e = pairs[(pairs.codec == 'jpeg2k') & (pairs.fr == ('s01', 100)) & (pairs.detector == det)]
+        N[f'EarlyL{name}'] = str(int((e.lo > 0).sum()))
+    N['PSNRjtkWins'] =f"{int((pj.drop_duplicates(['frame', 'method']).psnr_codec > pj.drop_duplicates(['frame', 'method']).psnr_lux).sum())} of {pj.drop_duplicates(['frame', 'method']).shape[0]}"
 
     # ---- Luxar's own budget K*
     ks, kr, kv = [], [], {n: [] for _, n in DETS}
@@ -272,7 +279,7 @@ def main():
         one = b.drop_duplicates(['frame', 'method'])
         spn = one.splats_per_nucleus
         cells = [f'$\\approx${lab}$\\times$', f'{spn.min():.0f}--{spn.max():.0f}' if spn.max() >= 1.5 else f'{spn.min():.1f}--{spn.max():.1f}',
-                 f'{(one.psnr_lux - one.psnr_codec).mean():+.1f}']
+                 f'{(one.psnr_lux - one.psnr_codec).mean():+.1f}'.replace('-', '$-$')]
         for det, _ in DETS:
             g = b[b.detector == det]
             if g.empty:
@@ -327,6 +334,7 @@ def main():
             ax.set_xscale('log')
             ax.set_xticks([20, 50, 100, 200, 500])
             ax.set_xticklabels(['20', '50', '100', '200', '500'])
+            ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
             ax.set_ylim(0.4, 1.12)
             style(ax)
             if ri == 0:
@@ -354,13 +362,16 @@ def main():
         ax.set_xscale('log')
         ax.set_xticks([1, 10, 100])
         ax.set_xticklabels(['1', '10', '100'])
+        ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
         ax.set_title(dn)
-        ax.set_ylim(0.5, 1.1)
+        ax.set_ylim(0.5, 1.12)
         style(ax)
     axes[1].set_xlabel('splats per labelled nucleus')
     axes[0].set_ylabel('nuclei kept')
-    axes[2].legend(frameon=False, fontsize=4.8, loc='lower right', handlelength=1.2, labelspacing=0.15)
-    fig.tight_layout(pad=0.3, w_pad=0.2)
+    h, l = axes[0].get_legend_handles_labels()
+    fig.legend(h, l, loc='lower center', ncol=5, frameon=False, fontsize=5.5, handlelength=1.4,
+               columnspacing=0.8, bbox_to_anchor=(0.5, -0.02))
+    fig.tight_layout(pad=0.3, w_pad=0.2, rect=(0, 0.08, 1, 1))
     fig.savefig(PAPER / 'figures' / 'fig_cliff.pdf', bbox_inches='tight', pad_inches=0.02)
     plt.close(fig)
 
@@ -382,6 +393,25 @@ def main():
     qualitative_figure(cp)
     for k, v in N.items():
         print(f'{k:16s} {v}')
+
+    # ---- claims the TEXT makes in words; fail loudly if the data stop supporting them
+    claims = {
+        'abstract/discussion: segmenters never favour Luxar at identical bytes':
+            N['PairsLWatershed'] == '0' and N['PairsLCellpose'] == '0',
+        'results: segmenters never favour Luxar on E1 t100':
+            N.get('EarlyLWatershed') == '0' and N.get('EarlyLCellpose') == '0',
+        'abstract: JPEG2000 has the higher PSNR at every matched size':
+            N['PSNRjtkWins'].split(' of ')[0] == N['PSNRjtkWins'].split(' of ')[1],
+        'results: blob-detector advantage exists (LuxAdv*, EarlyAdv* defined)':
+            'LuxAdvPts' in N and 'EarlyAdvPts' in N,
+        'limitations: embryo-2 calibration recommends the same K* as embryo 1':
+            all(json.load(open(REPO / 'runs' / 'fidelity_cluster3' / 'fidelity' / f'calibrate_ce_s02_t{t}'
+                               / 'summary.json'))['k_star'] == ks[0] for t in (150, 180)),
+    }
+    bad = [c for c, ok in claims.items() if not ok]
+    if bad:
+        raise SystemExit('TEXT CLAIMS NO LONGER SUPPORTED -- rewrite paper/main.tex:\n  ' + '\n  '.join(bad))
+    print(f'all {len(claims)} worded claims supported')
 
 
 def qualitative_figure(cp, fr=('s01', 194)):
