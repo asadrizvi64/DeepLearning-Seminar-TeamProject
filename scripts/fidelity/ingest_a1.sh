@@ -16,7 +16,7 @@ C=runs/fidelity_a1/fidelity
 A1="ce_s01_t110 ce_s01_t130 ce_s01_t170 ce_s01_t185 ce_s02_t110 ce_s02_t130 ce_s02_t165 ce_s02_t185"
 
 echo "=== unpack $(date +%T)"
-rm -rf runs/fidelity_a1 && mkdir -p runs/fidelity_a1 && tar -xzf "$TAR" -C runs/fidelity_a1
+rm -rf runs/fidelity_a1 && mkdir -p runs/fidelity_a1 && tar --force-local -xzf "$TAR" -C runs/fidelity_a1
 for d in $C/pilot_*; do
     echo "  $(basename $d): $(ls $d/luxar | wc -l) Luxar fits, $(($(wc -l < $d/rate_detectability.csv) - 1)) rows"
 done
