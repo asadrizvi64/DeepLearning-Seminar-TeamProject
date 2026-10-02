@@ -6,8 +6,8 @@ cd "$(dirname "$0")/../.."
 PY=${PY:-C:/Users/HP/cpenv/Scripts/python.exe}
 export PYTHONUTF8=1 PYTHONIOENCODING=utf-8
 F=runs/fidelity
-TAGS=${TAGS:-"ce_s02_t180 ce_t194 ce_s02_t150 ce_t150 ce_s01_t100"}
-for tag in $TAGS; do
+TAGS=${TAGS-"ce_s02_t180 ce_t194 ce_s02_t150 ce_t150 ce_s01_t100"}
+for tag in ${REDO_TAGS-$TAGS}; do
   echo "=== redo jpeg2k $tag $(date +%T)"
   $PY scripts/fidelity/redo_jpeg2k.py $tag
 done
