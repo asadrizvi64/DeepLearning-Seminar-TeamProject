@@ -1,8 +1,9 @@
 % 4-page workshop draft. IEEE two-column conference format; switching to a CVPR or
 % MICCAI/LNCS workshop template only changes the preamble.
 % Every number in \input{numbers} and every table/figure is generated from the result
-% files by scripts/fidelity/paper_numbers.py. Claims follow the verdicts of
-% scripts/fidelity/check_rules.py against paper/DECISION_RULES.md.
+% files by scripts/fidelity/paper_numbers.py (one command: scripts/fidelity/reproduce.sh).
+% Claims follow the verdicts of scripts/fidelity/check_rules.py against
+% paper/DECISION_RULES.md; paper/CLAIMS.md maps each claim to its evidence.
 \documentclass[conference]{IEEEtran}
 \usepackage{graphicx}
 \usepackage{booktabs}
@@ -29,18 +30,18 @@ Gaussian splats are being adopted to store and stream large 3D microscopy and me
 volumes, with budgets chosen and quality reported by PSNR. We ask whether, at a given number
 of bytes on disk, standard analysis still finds the nuclei. On four densely annotated frames
 from two \emph{C.~elegans} embryos (\NlabTotal{} labelled nuclei), we compare a Gaussian-splat
-compressor (Luxar) with JPEG-XL, JPEG2000, ZFP and downsampling at matched stored bytes,
-scoring a blob detector and a learned segmenter (Cellpose) against human labels, under
-decision rules fixed before the replication. Luxar's self-calibrated budget
-($\approx$\KstarRatio) keeps $\ge$97\% of nuclei under both detectors, but at a ratio where
-JPEG-XL is also nearly
-lossless ($\ge$\JXLworst{} up to \JXLmax) and far cheaper to compute. At hand-chosen
-budgets of $\approx$\SI{200}{\times} and beyond, splats keep far more nuclei than JPEG2000
-(Cellpose: \LuxHighCP{} vs.\ \JtkHighCP), until a cliff at $\lesssim$\CliffBelow{} splats
-per nucleus that PSNR, flat within \LuxPSNRrange, does not reveal. Splat reconstructions
-also cost the learned segmenter \GapRange{} points of recall relative to JPEG-XL at
-\SIrange{45}{94}{\times} on every frame, while the blob detector is unaffected. Object-level
-evaluation with the downstream detector should accompany Gaussian volume compression.
+compressor (Luxar) with JPEG2000 and JPEG-XL at identical stored bytes, scoring a blob
+detector, a classical 3D watershed and a learned segmenter (Cellpose) against human labels,
+with paired confidence intervals and decision rules fixed in advance. At every size from
+$\approx$\KstarRatio{} to \JtkMaxRatio, a correctly configured JPEG2000 has higher PSNR and,
+for both segmenters, keeps at least as many nuclei as the splats---significantly more in
+\PairsJWatershed{} of \PairsNWatershed{} (watershed) and \PairsJCellpose{} of
+\PairsNCellpose{} (Cellpose) size-matched pairs. Only the blob detector, which the splats'
+smooth blobs suit, finds slightly more nuclei in splat reconstructions (by \LuxAdvPts{}
+points, at \LuxAdvRatio{} on one embryo). Below $\approx$2 splats per nucleus the splats lose
+nuclei abruptly, while their PSNR stays within \LuxPSNRrange. Gaussian splats are not a
+better storage format for this analysis than a standard wavelet codec; object-level,
+size-matched evaluation against a verified codec baseline should accompany such claims.
 \end{abstract}
 
 \section{Introduction}
@@ -58,24 +59,27 @@ for visualisation rather than quantitative analysis \cite{royer2026luxar}.
 What a microscopist needs from a compressed volume is that the analysis still works. Whether
 a nucleus remains detectable hinges on a small, often faint peak. Radiology learned this for
 lossy codecs, where acceptability is judged by whether lesions remain detectable, not by
-PSNR \cite{koff2006overview}. Gaussian volume compression has not been held to that standard.
+PSNR \cite{koff2006overview}. Gaussian volume compression has not been held to that standard,
+nor compared with standard codecs at identical stored bytes.
 
-\textbf{Contributions.} (i)~A rate--detectability protocol: matched bytes on disk, dense human
-labels, two detectors, one-to-one matching in physical units, and decision rules committed
-before a replication on a second embryo. (ii)~Luxar's own budget is safe but sits where
-JPEG-XL is equally safe; its advantage over codecs appears only at hand-chosen budgets
-$\gtrsim$\SI{200}{\times}, bounded by a cliff that PSNR does not show. (iii)~Splat
-compression lowers a learned segmenter's recall at ratios where JPEG-XL does not---a
-detector dependence the codecs do not have.
+\textbf{Contributions.} (i)~A rate--detectability protocol: identical bytes on disk, dense
+human labels, three detector families, paired bootstrap intervals over nuclei, and decision
+rules committed before each new measurement. (ii)~At identical bytes, JPEG2000 keeps at least
+as many nuclei as Gaussian splats for both segmenters at every size we tested, and loses only
+marginally to them under a blob detector at moderate ratios; Luxar's own budget is safe, but
+so is the codec at the same bytes. (iii)~Splat reconstructions cost \emph{segmenters}---learned
+or classical---recall that blob detection does not reveal, and lose nuclei abruptly below
+$\approx$2 splats per nucleus with no PSNR signal. (iv)~A baseline pitfall: a common JPEG2000
+binding silently encodes a 3D array along the wrong axes, which had reversed our own
+high-ratio conclusion.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_qualitative}
 \caption{The same region of embryo~1, t194 (3-slice maximum projection) from the raw volume,
-JPEG-XL and Luxar at similar size; titles give whole-frame nuclei kept by Cellpose. JPEG-XL
-preserves the textured appearance of nuclei; Luxar renders smooth blobs on a black background
-with thin streaks from elongated splats---an image distribution a learned segmenter was not
-trained on.}
+JPEG-XL, and JPEG2000 and Luxar at identical bytes; titles give whole-frame nuclei kept by
+Cellpose. Both codecs preserve the textured appearance of nuclei; Luxar renders smooth blobs
+on a black background with thin streaks from elongated splats.}
 \label{fig:qual}
 \end{figure*}
 
@@ -85,11 +89,11 @@ Gaussian mixtures have long modelled nuclei for segmentation and lineage trackin
 splatting \cite{kerbl2023gaussian} has been adapted to CT \cite{zha2024r2gaussian,li2025threedgr},
 to slice-to-volume MRI with closed-form point-spread functions \cite{dannecker2026fast}, and
 to volume compression \cite{royer2026luxar,gaussianpile2026,gstoken2026,martin2026fixedbudget},
-each evaluated by image-fidelity metrics. JPEG2000 \cite{taubman2002jpeg2000}, JPEG-XL
-\cite{alakuijala2019jpegxl} and the error-bounded ZFP \cite{lindstrom2014fixed} are the natural
-baselines at matched size. We use Cell Tracking Challenge labels \cite{ulman2017objective,
-maska2023cell} and two standard detectors: a scale-normalised Laplacian of Gaussian
-\cite{lindeberg1998feature} and Cellpose \cite{stringer2021cellpose}.
+each evaluated by image-fidelity metrics. JPEG2000 \cite{taubman2002jpeg2000} and JPEG-XL
+\cite{alakuijala2019jpegxl} are the natural baselines at matched size. We use Cell Tracking
+Challenge labels \cite{ulman2017objective,maska2023cell} and three detectors: a
+scale-normalised Laplacian of Gaussian \cite{lindeberg1998feature}, a distance-transform
+watershed, and Cellpose \cite{stringer2021cellpose}.
 
 \section{Methods}
 \textbf{Data.} Fluo-N3DH-CE \cite{maska2023cell}: \emph{C.~elegans} embryos imaged at
@@ -103,97 +107,97 @@ multiples of this diameter $D$.
 \textbf{Compressors.} Luxar \cite{royer2026luxar} with default settings, 1000 iterations and
 anisotropic voxel size, over seed budgets $K$ from $10^3$ to $6.4\times10^4$ (embryo~2:
 $3.2\times10^4$); stored size is its \texttt{.gsplats.zarr} on disk. For embryo~1 we also run
-Luxar's own calibration---blind-spot held-out PSNR \cite{batson2019noise2self}---over the same
-$K$ grid to obtain its recommended $K^\ast$. JPEG2000 (3D, OpenJPEG), JPEG-XL (per slice), ZFP
-fixed-rate and trilinear downsampling are bisected to each target size; sizes a codec cannot
-reach are flagged and excluded from size-matched comparisons.
+Luxar's own calibration---blind-spot held-out PSNR \cite{batson2019noise2self}---to obtain its
+recommended $K^\ast$. JPEG2000 (OpenJPEG) codes each $xy$ slice with a 2D wavelet, all slices
+as components of one codestream, and is bisected to \emph{exactly} the byte size of every
+Luxar fit and to 50--800\,KiB; JPEG-XL codes each slice and is bisected to 50--800\,KiB.
+
+\textbf{A baseline pitfall.} Passing a $(z,y,x)$ array to a common JPEG2000 binding encodes a
+$z$--$y$ image with one component per $x$ column, so the wavelet never runs along $x$. That
+configuration, which we used at first, costs $\approx$\SI{10}{dB} at \SI{220}{\times} and made
+splats appear far better than JPEG2000 beyond \SI{200}{\times}. We now check the codestream
+header (width, height, components) in a regression test.
 
 \textbf{Detectors and scoring.} (a)~LoG: local maxima in a physically isotropic window, ranked
 by scale-normalised LoG response ($\sigma\in\{0.2,0.27,0.33,0.4\}D$); the top $N$ are kept,
-$N$ = number of labelled nuclei. (b)~Cellpose~3 \emph{nuclei}, 2D per slice stitched across
-$z$, at its own operating point. Detections match labels one-to-one within $0.6D$
-(Table~\ref{tab:radius} varies it). \emph{Nuclei kept} = nuclei found after compression /
-found in the raw volume by the same detector (1.0 = nothing lost). \emph{Survival}, a
-label-free measure, is the fraction of the raw volume's 100 strongest LoG detections still
-found.
+$N$ = number of labelled nuclei. (b)~Watershed: background-subtracted, Otsu-thresholded
+foreground split by a distance-transform watershed in physical units; parameters fixed on
+raw volumes only. (c)~Cellpose~3 \emph{nuclei}, 2D per slice stitched across $z$. On the raw
+volumes they find \RecallLoG, \RecallWatershed{} and \RecallCellpose{} of the labelled nuclei.
+Detections match labels one-to-one within $0.6D$ (Table~\ref{tab:radius} varies it).
+\emph{Nuclei kept} = nuclei found after compression / found in the raw volume by the same
+detector. Size-matched differences carry 95\% bootstrap intervals over labelled nuclei,
+resampled jointly for the raw volume and both reconstructions.
 
-\textbf{Decision rules.} Before the embryo-2 replication and the calibration runs, we committed
-written pass/fail rules for each claim \todo{repository link}. One claim failed as worded and
-is reported in its narrowed form below.
+\textbf{Decision rules.} Before each new measurement we committed written pass/fail rules
+\todo{repository link}; claims that failed are reported in their narrowed form.
 
 \section{Results}
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_rate_detectability}
-\caption{Nuclei kept (relative to the raw volume) against compression ratio at matched bytes on
-disk, for the LoG blob detector (top) and Cellpose (bottom), on four frames from two embryos
-(E1, E2). JPEG-XL cannot exceed \JXLmax{} on this data.}
+\caption{Nuclei kept (relative to the raw volume, same detector) against compression ratio,
+for the LoG blob detector, the 3D watershed and Cellpose, on four frames from two embryos
+(E1, E2). JPEG2000 is encoded at each Luxar fit's exact byte size and at 50--800\,KiB.}
 \label{fig:rd}
 \end{figure*}
 
-\textbf{Codecs.} JPEG-XL is nearly lossless for detection up to its maximum ratio
-(\JXLmax; worst case \JXLworst{} under Cellpose). JPEG2000 degrades beyond
-$\approx$\SI{100}{\times} and keeps \JtkHighRange{} of nuclei at $\approx$\SI{230}{\times}
-(Fig.~\ref{fig:rd}, Table~\ref{tab:main}); downsampling and fixed-rate ZFP fail early.
+\textbf{Codecs.} JPEG-XL is nearly lossless for detection up to its maximum distance
+(\JXLmax; worst case \JXLworst). JPEG2000 continues far beyond: at \FarRatio{} it still keeps
+\FarJtkLoG{} (LoG), \FarJtkWatershed{} (watershed) and \FarJtkCellpose{} (Cellpose) of nuclei
+(Fig.~\ref{fig:rd}).
 
-\textbf{Luxar at its own budget.} Luxar's calibration recommends $K^\ast=\Kstar$ on both
-embryo-1 frames---the top of our grid, with held-out PSNR still rising. There it keeps
-\KstarLoG{} (LoG) and \KstarCP{} (Cellpose) of nuclei, at \KstarRatio. Its own rule is
-therefore safe here, but it lands at ratios where JPEG-XL is equally safe, while fitting takes
-\FitA{} per volume on an A100 (\FitH{} on an H100) against seconds for the codecs.
+\textbf{Splats vs.\ JPEG2000 at identical bytes.} Table~\ref{tab:main} pairs every Luxar fit
+with the JPEG2000 encoding of the same size. For the segmenters, JPEG2000 keeps significantly
+more nuclei in \PairsJWatershed{} of \PairsNWatershed{} pairs (watershed) and \PairsJCellpose{}
+of \PairsNCellpose{} (Cellpose), and Luxar significantly more in \PairsLWatershed{} and
+\PairsLCellpose. Under the blob detector, Luxar keeps \LuxAdvPts{} points more at
+\LuxAdvRatio{} on \LuxAdvFrames{} (its smooth blobs act as a denoiser for a blob filter; kept
+exceeds 1), but beyond \SI{300}{\times} it keeps \FarLuxLoG{} against \FarJtkLoG{} for
+JPEG2000. JPEG2000 also has the higher PSNR in \PSNRjtkWins{} size-matched pairs.
 
 \begin{table}[t]
 \centering
-\caption{Nuclei kept near matched ratios, mean over the four frames (superscript: fewer frames
-with a size match). Match radius $0.6D$.}
+\caption{Luxar minus JPEG2000 at identical bytes: nuclei kept (percentage points, mean over
+frames; superscript: fewer frames) and PSNR (dB). Bold: every pair's 95\% interval lies on
+the same side of zero. Match radius $0.6D$.}
 \label{tab:main}
 \input{table_main}
 \end{table}
 
-\textbf{Hand-chosen budgets.} Below $K^\ast$, splats reach ratios no codec matches. At
-$\approx$\SI{230}{\times} Luxar keeps \LuxHighLoG{} (LoG) and \LuxHighCP{} (Cellpose) of
-nuclei, against \JtkHighLoG{} and \JtkHighCP{} for JPEG2000, on both embryos; 95\% bootstrap
-intervals over nuclei exclude zero on \HiLoGCIfrac{} frames for LoG but only \HiCPCIfrac{} for
-Cellpose (embryo~1 t150 is unresolved). The advantage is not uniform: at \SIrange{110}{135}{\times} on embryo~2, JPEG2000 at \SI{110}{\times} keeps
-\RevJtkCP{} under Cellpose versus \RevLuxCP{} for Luxar, so our pre-registered claim
-``Luxar leads beyond \SI{120}{\times}'' is narrowed to $\approx$\SI{200}{\times} and beyond.
-Loss then sets in abruptly once splats become scarce (Fig.~\ref{fig:cliff}): on all four
-frames Luxar drops below 90\% (LoG) only at $\le$\CliffBelow{} splats per labelled nucleus,
-reaching \CliffOne{} at one per nucleus. Over the same budgets Luxar's PSNR moves only within
-\LuxPSNRrange{} (Fig.~\ref{fig:psnr}); across all reconstructions PSNR orders \PSNRwrong{} of
-pairs more than \SI{1}{dB} apart the wrong way round for faint nuclei kept.
+\textbf{Luxar at its own budget.} Luxar's calibration recommends $K^\ast=\Kstar$ on both
+embryo-1 frames---the top of our grid, with held-out PSNR still rising. There it keeps
+\KstarLoG{} (LoG), \KstarWatershed{} (watershed) and \KstarCellpose{} (Cellpose) of nuclei, at
+\KstarRatio; JPEG2000 at the same bytes keeps \KstarJtk{}, at the cost of seconds rather than
+\FitA{} of fitting per volume on an A100 (\FitH{} on an H100).
+
+\textbf{The budget cliff.} Splats lose nuclei abruptly once they become scarce
+(Fig.~\ref{fig:cliff}): on all four frames Luxar drops below 90\% (LoG) only at
+$\le$\CliffBelow{} splats per labelled nucleus, reaching \CliffOne{} at one per nucleus,
+while its PSNR moves only within \LuxPSNRrange. Survival---the fraction of the raw volume's
+100 strongest LoG detections still found, which needs no labels---tracks nuclei kept across
+Luxar fits (Spearman $\rho=\SurvRho$, $n=\SurvN$) and can flag the cliff.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_cliff}
 \caption{The budget cliff: nuclei kept against splats per labelled nucleus for every Luxar
-fit (dashed: E1 t100, whose smallest budget has 3.1 splats per nucleus).}
+fit, per detector (dashed: E1 t100).}
 \label{fig:cliff}
 \end{figure}
 
-\textbf{Detector dependence.} With the blob detector, Luxar keeps \LuxMidLoG{} of nuclei at
-\SIrange{45}{94}{\times}; with Cellpose only \LuxMidCP, \GapRange{} points below JPEG-XL at
-the same ratios, on all \GapFrames{} frames (95\% bootstrap intervals exclude zero on
-\GapCIfrac, one only narrowly). The two detectors need very different budgets
-(Fig.~\ref{fig:cliff}): the blob detector recovers every nucleus once there are $\approx$3--5
-splats per nucleus, whereas Cellpose stays at 80--90\% from $\approx$5 to 50 splats per
-nucleus and approaches the codecs only at $\approx$100 or more---the regime of Luxar's own
-$K^\ast$. Covering each nucleus is not enough for a learned segmenter; the reconstruction
-must also look like the images it was trained on (Fig.~\ref{fig:qual}). The deficit is
-moderate relative to Cellpose's own variability---its scores move by up to \CPwobble{} points
-between neighbouring sizes of the same codec---but consistent in sign across frames and
-embryos, and the codecs show no comparable detector dependence.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/fig_psnr_blind}
-\caption{PSNR against nuclei kept (Cellpose) for every reconstruction on the four frames.}
-\label{fig:psnr}
-\end{figure}
-
-\textbf{A label-free guard.} Survival, which needs no labels, tracks nuclei kept across Luxar
-fits (Spearman $\rho=\SurvRho$, $n=\SurvN$). Being itself a blob-detector measure, it can flag
-the budget cliff but not the segmenter's appearance gap.
+\textbf{Detector dependence.} At \SIrange{45}{94}{\times} the blob detector keeps
+\LuxMidLoG{} of nuclei in Luxar reconstructions, but both segmenters lose more: Cellpose keeps
+\LuxMidCP{} (\GapCP{} points below JPEG-XL at the same ratios, all \GapFramesCP{} frames; 95\%
+intervals exclude zero on \GapCIfrac) and the watershed \LuxMidWS{} (\GapWS{} points below;
+on \GapWSCIfrac).
+The penalty is therefore not specific to a learned model: a reconstruction of smooth blobs on
+a black background (Fig.~\ref{fig:qual}) changes what a segmenter sees as foreground and
+boundary, while a blob filter is indifferent to it. The blob detector recovers every nucleus
+once there are $\approx$3--5 splats per nucleus; the segmenters need far more
+(Fig.~\ref{fig:cliff}). Cellpose's scores move by up to \CPwobble{} points between
+neighbouring sizes of the same codec, so single comparisons are noisy, but the sign is
+consistent across frames and embryos.
 
 \begin{table}[t]
 \centering
@@ -204,24 +208,27 @@ nuclei kept near \SI{90}{\times} (mean).}
 \end{table}
 
 \section{Discussion and Limitations}
-On this data, the case for Gaussian-splat \emph{storage} rests on ratios well beyond JPEG-XL's
-reach, and there it depends on two things that image-fidelity metrics hide: the budget, and
-the detector used afterwards. We recommend (i)~JPEG-XL wherever its ratio suffices; (ii)~for
-higher ratios, checking a splat budget at the object level before trusting it (survival is a
-label-free start); and (iii)~reporting rate--detectability with the detector that will be used
-downstream.
+On this data, at identical stored bytes, Gaussian splats are not a better format for nuclear
+analysis than a standard wavelet codec: JPEG-XL is nearly lossless to $\approx$\SI{100}{\times}
+and JPEG2000 keeps more nuclei, for both segmenters, at every larger ratio we tested. Splats
+remain attractive for what Luxar designs them for---continuous, GPU-native rendering---and a
+blob detector tolerates them well. We recommend (i)~comparing Gaussian volume compression
+with a verified codec baseline at identical bytes, (ii)~reporting object-level recall with
+the detector that will be used downstream, and (iii)~checking a splat budget at the object
+level before trusting it (survival is a label-free start).
 
-Limitations: one organism (two embryos, five frames); Cellpose in its 2D-stitched mode and with
-the variability noted above; a single Gaussian compressor at default settings; the
-calibration evaluated on embryo~1 only; and larger early-embryo nuclei (t100) that fit our
-fixed $D$ less well. Fine-tuning segmenters on splat reconstructions, and the same audit for
-small low-contrast lesions in CT, are future work.
+Limitations: one organism (two embryos, five frames); Cellpose in its 2D-stitched mode; one
+Gaussian compressor at default settings (tuned or entropy-coded splats may fare better); a
+2D-per-slice JPEG2000 (a 3D wavelet would likely be stronger still); the calibration
+evaluated on embryo~1 only; and larger early-embryo nuclei (t100) that fit our fixed $D$ less
+well. The same audit for small low-contrast lesions in CT is future work.
 
 \section{Conclusion}
-Measured at matched bytes against human labels, Gaussian-splat compression keeps nuclei at
-ratios no standard codec reaches, but only above a budget that PSNR cannot identify, and with
-a recall cost for learned segmenters that no image-fidelity metric exposes. Object-level,
-detector-specific rate--detectability evaluation should accompany Gaussian volume compression.
+Measured at identical bytes against human labels, Gaussian-splat compression keeps nuclei
+well at its own budget but no better than JPEG2000 at any budget for segmentation, loses
+them abruptly below a budget PSNR cannot identify, and costs segmenters recall that a blob
+detector does not show. Object-level, size-matched evaluation against verified codec
+baselines should accompany Gaussian volume compression.
 
 \bibliographystyle{IEEEtran}
 \bibliography{refs}
