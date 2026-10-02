@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Study A, stage A1 (robustness frames): codec side, run locally (no GPU needed).
 # Luxar fits for the same frames run on the cluster (scripts/hpc/fidelity_pilot.sbatch).
-# Usage: bash scripts/fidelity/run_a1_local.sh [codecs|log|cellpose|all]
+# Usage: bash scripts/fidelity/run_a1_local.sh [codecs|log|watershed|cellpose|all]
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 PY=${PY:-C:/Users/HP/cpenv/Scripts/python.exe}
@@ -25,6 +25,10 @@ for sf in $FRAMES; do
   if [[ $STAGE == log || $STAGE == all ]]; then
     echo "=== log $tag $(date +%T)"
     $PY scripts/fidelity/log_rescore.py $dirs --out $F/log_$tag.csv
+  fi
+  if [[ $STAGE == watershed || $STAGE == all ]]; then
+    echo "=== watershed $tag $(date +%T)"
+    $PY scripts/fidelity/watershed_score.py $dirs --out $F/watershed_$tag.csv
   fi
   if [[ $STAGE == cellpose || $STAGE == all ]]; then
     echo "=== cellpose $tag $(date +%T)"
