@@ -105,3 +105,10 @@ rule, the detector-dependence claim is restricted to 2D-stitched segmentation. R
 vs same-size JPEG2000) is then also evaluated for Cellpose 3D mode, once the corrected
 JPEG2000 volumes are scored on the cluster. No 3D-mode JPEG2000 result had been seen when
 this note was written.
+
+**Disclosure (watershed parameters).** The watershed parameters (section 4, A2) were chosen
+on raw volumes while the scorer still had the voxel-size bug (fixed in 4301d32), so the
+F1 values that guided the choice were computed with a too-tight effective radius. The
+choice used raw volumes only, so no reconstruction result influenced it, and the
+parameters were not re-tuned after the fix. With correct matching, the frozen parameters
+reach 84-95% recall at 88-93% precision on the raw paper frames.

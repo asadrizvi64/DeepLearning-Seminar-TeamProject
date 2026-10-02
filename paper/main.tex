@@ -108,7 +108,9 @@ multiples of this diameter $D$.
 anisotropic voxel size, over seed budgets $K$ from $10^3$ to $6.4\times10^4$ (embryo~2:
 $3.2\times10^4$); stored size is its \texttt{.gsplats.zarr} on disk. For embryo~1 we also run
 Luxar's own calibration---blind-spot held-out PSNR \cite{batson2019noise2self}---to obtain its
-recommended $K^\ast$. JPEG2000 (OpenJPEG) codes each $xy$ slice with a 2D wavelet, all slices
+recommended $K^\ast$. Luxar renders are mapped to raw intensities by a least-squares gain and
+offset (two numbers, not counted in its size, which slightly favours it); its size does include
+the zarr metadata. JPEG2000 (OpenJPEG) codes each $xy$ slice with a 2D wavelet, all slices
 as components of one codestream, and is bisected to \emph{exactly} the byte size of every
 Luxar fit and to 50--800\,KiB; JPEG-XL codes each slice and is bisected to 50--800\,KiB.
 
@@ -127,7 +129,8 @@ volumes they find \RecallLoG, \RecallWatershed{} and \RecallCellpose{} of the la
 Detections match labels one-to-one within $0.6D$ (Table~\ref{tab:radius} varies it).
 \emph{Nuclei kept} = nuclei found after compression / found in the raw volume by the same
 detector. Size-matched differences carry 95\% bootstrap intervals over labelled nuclei,
-resampled jointly for the raw volume and both reconstructions.
+resampled jointly for the raw volume and both reconstructions; they are per pair, not corrected
+for multiple comparisons, so we report counts of pairs rather than single significant ones.
 
 \textbf{Decision rules.} Before each new measurement we committed written pass/fail rules
 \todo{repository link}; claims that failed are reported in their narrowed form.
