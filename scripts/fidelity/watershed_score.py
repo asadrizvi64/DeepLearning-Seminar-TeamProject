@@ -44,6 +44,10 @@ spec.loader.exec_module(rd)
 spec = importlib.util.spec_from_file_location('cps', HERE / 'cellpose_score.py')
 cps = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cps)
+# cellpose_score loads its OWN copy of rate_detectability; its match() must use the copy
+# configured below, or it matches in the default (DRO) voxel size. Bug of 2026-10-02:
+# the first watershed CSVs were matched with 0.406 um xy voxels instead of 0.09 um.
+cps.rd = rd
 
 # Frozen 2026-10-02 from a 16-setting check on RAW volumes only (E1 t150, E2 t180; F1 vs
 # the TRA labels at 0.6 D) -- never tuned on reconstructions. Background sigma 1.0 D beat

@@ -389,6 +389,25 @@ def _():
     assert rec.shape == vol.shape
 
 
+@test('watershed scorer matches in the configured voxel size (real bug)')
+def _():
+    """BUG: watershed_score.py borrowed cellpose_score.match, whose module held its own,
+    never-configured copy of rate_detectability (DRO voxels, 4.5x too large in xy), so
+    every watershed score was matched with a far tighter radius than intended."""
+    import importlib.util
+    from pathlib import Path
+    spec = importlib.util.spec_from_file_location(
+        'ws', Path(__file__).resolve().parent / 'fidelity' / 'watershed_score.py')
+    ws = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ws)
+    ds = ws.rd.DATASETS['CE']
+    ws.rd.configure(ds['voxel'], ds['nucleus_um'])
+    gt = np.array([[10.0, 100.0, 100.0]])
+    pred = gt + [0, 0, 20]                       # 20 voxels in x = 1.8 um on CE
+    m = ws.cps.match(pred, gt, np.zeros(1, bool), 0.6 * ds['nucleus_um'])
+    assert m['found'] == 1, 'a detection 1.8 um away must match within 0.6 D = 2.16 um'
+
+
 # ---------------------------------------------------------------- report
 
 def main():
