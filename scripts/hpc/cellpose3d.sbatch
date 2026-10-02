@@ -36,8 +36,12 @@ TAG=${TAGS[$SLURM_ARRAY_TASK_ID]}
 DIRS="$F/pilot_$TAG"
 [ -d "$F/pilot_${TAG}_hi" ] && DIRS="$DIRS $F/pilot_${TAG}_hi"
 [ -d "$F/codecs_${TAG}" ] && DIRS="$DIRS $F/codecs_${TAG}"
-if ls $F/pilot_${TAG}*/recon/jpeg2k_* >/dev/null 2>&1 && [ $SLURM_ARRAY_TASK_ID -lt 4 ]; then
-    echo "pre-fix JPEG2000 volumes still in the pilot folders of $TAG -- move them aside first"; exit 1
+if [ $SLURM_ARRAY_TASK_ID -lt 4 ]; then
+    for d in $F/pilot_$TAG $F/pilot_${TAG}_hi; do
+        if [ -d $d ] && ls $d/recon/jpeg2k_* >/dev/null 2>&1; then
+            echo "pre-fix JPEG2000 volumes still in $d/recon -- move them aside first"; exit 1
+        fi
+    done
 fi
 
 source "$WS/luxenv/bin/activate"
