@@ -205,6 +205,19 @@ def main():
                 wob.append(np.max(np.abs(np.diff(s))))
     N['CPwobble'] = f'{100 * max(wob):.0f}'
 
+    # ---- run-to-run spread: three identical Luxar fits of E1 t194 (original + 2 repeats)
+    for det, name in DETS:
+        base = D[det][(D[det].fr == ('s01', 194))]
+        spread = []
+        for k in (2000, 4000, 16000):
+            v = [float(base[base.method == f'luxar_K{k}'][KEY].iloc[0])]
+            for rep in ('rep1', 'rep2'):
+                d = pd.read_csv(F / f'{det}_ce_t194_{rep}.csv')
+                raw = d[d.method == 'raw'].iloc[0]['found@r0.6']
+                v.append(float(d[d.method == f'luxar_K{k}'].iloc[0]['found@r0.6'] / raw))
+            spread.append(max(v) - min(v))
+        N[f'Rep{name}'] = f'{100 * max(spread):.1f}'
+
     # ---- cliff (LoG)
     def per_nuc(df):
         m = df.merge(lux[['fr', 'method', 'splats', 'n_true']], on=['fr', 'method'])

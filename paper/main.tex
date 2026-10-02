@@ -197,7 +197,9 @@ boundary, while a blob filter is indifferent to it. The blob detector recovers e
 once there are $\approx$3--5 splats per nucleus; the segmenters need far more
 (Fig.~\ref{fig:cliff}). Cellpose's scores move by up to \CPwobble{} points between
 neighbouring sizes of the same codec, so single comparisons are noisy, but the sign is
-consistent across frames and embryos.
+consistent across frames and embryos. Luxar itself is reproducible: three independent fits of
+E1 t194 at each of three budgets differ by at most \RepLoG{} (LoG), \RepWatershed{} (watershed)
+and \RepCellpose{} (Cellpose) points of nuclei kept.
 
 \begin{table}[t]
 \centering
