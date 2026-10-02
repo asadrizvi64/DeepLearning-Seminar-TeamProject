@@ -6,3 +6,4 @@ paper/*.aux
 paper/*.bbl
 paper/*.blg
 paper/*.out
+runs/fidelity/*/recon_superseded_jpeg2k/
