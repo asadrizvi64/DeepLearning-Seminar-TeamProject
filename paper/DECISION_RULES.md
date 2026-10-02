@@ -52,3 +52,14 @@ A claim "holds" if it holds on at least 6 of the 8 new frames (75%).
 - **A2 learned vs classical.** With a non-learned 3D watershed detector, a gap < 5 points on
   >= 75% of frames supports "learned segmenters are the sensitive ones"; a gap >= 5 points
   means the penalty is not specific to learned models, and the paper says so.
+
+**Amendment (2026-10-02, still before any A1 data).** K=500 and K=1500 are added to the Luxar
+budgets, because on the ~100-nucleus frames K=1000 already gives about 3 splats per nucleus
+(E1 t100: 288 splats for 93 nuclei), so the 90% crossing would not be bracketed. The
+crossing is interpolated linearly in log(splats per nucleus) between the two budgets that
+bracket 90%. If even the smallest budget keeps >= 90%, the crossing is reported as an upper
+bound: it counts as holding if that bound is <= 3.5, and as unresolved otherwise. Unresolved
+frames count against the 6-of-8 threshold. The A1 PSNR rule still uses K=1000-16000 only.
+Codecs: JPEG2000 and JPEG-XL only (the two the paper's claims rest on), at 50, 100, 200, 400
+and 800 KiB, plus at each Luxar fit's byte size once those are known. The 95% and 90%
+crossings are reported for every method and detector, as descriptive results.
