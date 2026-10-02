@@ -13,6 +13,7 @@
 #   4. Detectors on every reconstruction         scripts/fidelity/log_rescore.py      (LoG)
 #                                                scripts/fidelity/cellpose_score.py   (Cellpose, 2D stitched)
 #                                                scripts/fidelity/watershed_score.py  (classical 3D)
+#      JPEG2000 after the 2026-10-02 axis fix:   scripts/fidelity/run_redo_jpeg2k.sh
 #                                                scripts/hpc/cellpose3d.sbatch        (Cellpose 3D, GPU)
 #   A1 frames: scripts/fidelity/run_a1_local.sh (local side) and scripts/hpc/submit_a1.sh (fits)
 # Environments: C:/Users/HP/cpenv (Python 3.12, cellpose<4, luxar); LaTeX via conda env "tex"
@@ -24,7 +25,8 @@ export PYTHONUTF8=1 PYTHONIOENCODING=utf-8 MPLBACKEND=Agg
 
 $PY scripts/test_metrics.py                 # matcher / scorer regression suite first
 $PY scripts/fidelity/results_table.py       # runs/fidelity/results_all.csv (the single table)
-$PY scripts/fidelity/check_rules.py         # runs/fidelity/rule_check.md  (rules 1-3)
+$PY scripts/fidelity/matched_pairs.py       # runs/fidelity/matched_pairs.csv (Luxar vs same-size codecs, CIs)
+$PY scripts/fidelity/check_rules.py         # runs/fidelity/rule_check.md  (rules 1-3, 5)
 $PY scripts/fidelity/a1_crossings.py        # runs/fidelity/rule_check_a1.md (rules 4), a1_crossings.csv
 $PY scripts/fidelity/bootstrap_ci.py        # paper/numbers_ci.tex, runs/fidelity/bootstrap_ci.csv
 $PY scripts/fidelity/paper_numbers.py       # paper/numbers.tex, tables, figures

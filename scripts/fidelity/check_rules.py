@@ -139,6 +139,26 @@ def main():
             f'LoG {kl:.3f}, Cellpose {kc:.3f}')
         safe &= kl >= 0.95
     say(f'**Verdict: {"SAFE for blob detection -- limit the PSNR-blind claim to hand-chosen budgets" if safe else "LOSES NUCLEI"}**')
+    say()
+
+    # ---- Rule 5: Luxar vs JPEG2000 at exactly the same bytes (paired CIs, matched_pairs.py)
+    say('## 5. Luxar vs JPEG2000 at the same bytes (paired 95% CI over nuclei)')
+    mp = F / 'matched_pairs.csv'
+    if not mp.exists():
+        say('**NOT EVALUABLE -- run scripts/fidelity/matched_pairs.py**')
+    else:
+        p = pd.read_csv(mp)
+        p = p[p.codec == 'jpeg2k']
+        any_lux = False
+        for det, g in p.groupby('detector'):
+            jb, lb = g[g.hi < 0], g[g.lo > 0]
+            say(f'- {det}: {len(g)} pairs on {g.frame.nunique()} frames -- JPEG2000 better {len(jb)}, '
+                f'no difference {len(g) - len(jb) - len(lb)}, Luxar better {len(lb)}')
+            for _, r in lb.iterrows():
+                say(f'    - Luxar better: {r.frame} {r.method} {r.ratio:.0f}x, '
+                    f'{100 * r["diff"]:+.1f} points [{100 * r.lo:+.1f}, {100 * r.hi:+.1f}]')
+            any_lux |= len(lb) > 0
+        say(f'**Verdict: {"Luxar better somewhere -- the paper names these combinations" if any_lux else "JPEG2000 keeps at least as many nuclei at every matched size"}**')
 
     (F / 'rule_check.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
 
