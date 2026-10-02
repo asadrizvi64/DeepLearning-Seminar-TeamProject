@@ -98,3 +98,10 @@ Cellpose, watershed or 0.6 D score of the corrected JPEG2000 had been seen.
   no combination has its interval above zero, on the v1.0 frames now and the A1 frames
   when they arrive.
 - The counts (JPEG2000 better / no difference / Luxar better) are reported per detector.
+
+**Note (2026-10-02, 22:40).** Cellpose 3D-mode results for E1 t150, E2 t150 and E2 t180 were
+seen (Luxar vs JPEG-XL only): the 2D-stitched penalty is absent in 3D mode. Following the A2
+rule, the detector-dependence claim is restricted to 2D-stitched segmentation. Rule 5 (Luxar
+vs same-size JPEG2000) is then also evaluated for Cellpose 3D mode, once the corrected
+JPEG2000 volumes are scored on the cluster. No 3D-mode JPEG2000 result had been seen when
+this note was written.
