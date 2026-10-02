@@ -46,6 +46,7 @@ else
     TAG="dro_$(echo $SHAPE | tr ' ' 'x')"
 fi
 OUT="${OUT:-$WS/runs/fidelity/pilot_$TAG}"
+CODECS="${CODECS:-jpeg2k jpegxl zfp downsample}"
 
 source "$WS/luxenv/bin/activate"
 export PYTHONUTF8=1 PYTHONIOENCODING=utf-8
@@ -54,6 +55,6 @@ python -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is
 
 python "$REPO/scripts/fidelity/rate_detectability.py" \
     --out "$OUT" --dataset "$DATASET" --root "$ROOT" --frame "$FRAME" --seq "$SEQ" $WHERE \
-    --device cuda --n-iters 1000 --luxar-seeds $SEEDS
+    --device cuda --n-iters 1000 --luxar-seeds $SEEDS --codecs $CODECS
 
 echo "Results: $OUT/rate_detectability.csv"

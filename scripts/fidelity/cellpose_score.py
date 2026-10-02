@@ -17,6 +17,13 @@ Cellpose is a segmenter, not a ranker, so it is scored at its own operating poin
 recall, precision (meaningful on densely labelled CE) and F1, and nuclei kept relative
 to Cellpose on the raw volume. Resumable.
 
+3D MODE (--do-3d, stage A2): Cellpose's own volumetric mode instead of 2D-per-slice
+stitching -- the network runs on YX, ZY and ZX slices of the volume resampled to isotropic
+(anisotropy = z / xy voxel size) and the three flow fields are combined before mask
+reconstruction. This tests whether the stitching, not compression, causes the losses.
+Slow on CPU; run it on a GPU (scripts/hpc/cellpose3d.sbatch). Use a different --out so the
+centroid cache is separate (e.g. cellpose3d_ce_t150.csv).
+
 Needs the Cellpose environment (cellpose<4):
     C:/Users/HP/cpenv/Scripts/python.exe scripts/fidelity/cellpose_score.py \
         runs/fidelity/codecs_ce_t150 runs/fidelity/luxar_render_ce_t150 --out runs/fidelity/cellpose_ce_t150.csv
@@ -46,10 +53,17 @@ def centroids(masks):
     return np.array(center_of_mass(masks > 0, masks, ids))
 
 
-def detect(model, vol, diameter_px):
-    masks, *_ = model.eval(vol.astype(np.float32), channels=[0, 0], diameter=diameter_px,
-                           do_3D=False, stitch_threshold=0.25)
-    return centroids(masks)
+def detect(model, vol, diameter_px, do_3d=False):
+    if do_3d:
+        masks, *_ = model.eval(vol.astype(np.float32), channels=[0, 0], diameter=diameter_px,
+                               do_3D=True, anisotropy=float(rd.V[0] / rd.V[1]))
+    else:
+        masks, *_ = model.eval(vol.astype(np.float32), channels=[0, 0], diameter=diameter_px,
+                               do_3D=False, stitch_threshold=0.25)
+    c = centroids(masks)
+    if masks.shape != vol.shape:          # map back if Cellpose returned resampled masks
+        c = c * (np.array(vol.shape) / np.array(masks.shape))
+    return c
 
 
 def match(pred, gt, faint, radius_um):
@@ -69,7 +83,12 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument('dirs', nargs='+')
     p.add_argument('--out', required=True)
+    p.add_argument('--do-3d', action='store_true', help="Cellpose's volumetric mode")
+    p.add_argument('--gpu', action='store_true')
+    p.add_argument('--root', default=None, help='dataset root (overrides the registry)')
+    p.add_argument('--only', default=None, help='regex on method names to score, e.g. "luxar|jpegxl"')
     args = p.parse_args()
+    import re
 
     out = Path(args.out)
     cache = out.parent / (out.stem + '_centroids')
@@ -80,9 +99,10 @@ def main():
     diameter_px = ds['nucleus_um'] / rd.V[1]
     shape = None if meta0['origin'] == [0, 0, 0] else meta0['shape']
     seq = meta0.get('seq', '01')
-    crop, lo, hi = rd.load_crop(ds['root'], meta0['frame'], meta0['origin'], shape, seq)
+    root = args.root or ds['root']
+    crop, lo, hi = rd.load_crop(root, meta0['frame'], meta0['origin'], shape, seq)
     group = f"{meta0['dataset']} s{seq} t{meta0['frame']:03d}"
-    gt = rd.gt_from_tra(ds['root'], meta0['frame'], meta0['origin'], shape, seq)
+    gt = rd.gt_from_tra(root, meta0['frame'], meta0['origin'], shape, seq)
     raw_norm = rd.normalise(crop, lo, hi)
     _, _, L = rd.ranked_candidates(raw_norm)
     g = L[tuple(np.clip(np.round(gt).astype(int), 0, np.array(crop.shape) - 1).T)]
@@ -94,7 +114,7 @@ def main():
     for d in args.dirs:
         for f in sorted((Path(d) / 'recon').glob('*.npz')):
             method, nbytes = f.stem.rsplit('_', 1)
-            if method != 'raw':
+            if method != 'raw' and (args.only is None or re.search(args.only, method)):
                 jobs.append((method, int(nbytes), f.name, f))
 
     model = None
@@ -106,9 +126,9 @@ def main():
         else:
             if model is None:
                 from cellpose import models
-                model = models.Cellpose(gpu=False, model_type='nuclei')
+                model = models.Cellpose(gpu=args.gpu, model_type='nuclei')
             vol = src if isinstance(src, np.ndarray) else np.load(src)['rec'].astype(np.float32)
-            pred = detect(model, vol, diameter_px)
+            pred = detect(model, vol, diameter_px, args.do_3d)
             np.save(cfile, pred)
         row = dict(group=group, file=fname, method=method, bytes=nbytes,
                    ratio=crop.nbytes / nbytes, n_pred=int(len(pred)))
