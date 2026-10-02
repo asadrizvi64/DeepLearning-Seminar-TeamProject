@@ -1,6 +1,8 @@
 #!/bin/bash
 # Study A, stage A2: Cellpose in its volumetric mode (do_3D) on the Luxar fits and the
-# JPEG2000 / JPEG-XL reconstructions matched to their bytes (paper/DECISION_RULES.md, sec. 4).
+# JPEG-XL reconstructions matched to their bytes (paper/DECISION_RULES.md, sec. 4).
+# JPEG2000 is excluded: the cluster run folders still hold the pre-fix (broken) JPEG2000
+# volumes, and the A2 rule compares JPEG-XL with Luxar only.
 # One array task per frame; reads the pilot run folders' recon/ volumes on the workspace.
 #
 # One-time, on a login node:  source "$(ws_find volsplat)/luxenv/bin/activate" && uv pip install "cellpose<4"
@@ -36,4 +38,4 @@ source "$WS/luxenv/bin/activate"
 export PYTHONUTF8=1 PYTHONIOENCODING=utf-8
 python -c "import cellpose, torch; print('cellpose ok, cuda', torch.cuda.is_available())"
 python "$REPO/scripts/fidelity/cellpose_score.py" $DIRS --out "$F/cellpose3d_$TAG.csv" \
-    --root "$WS/Fluo-N3DH-CE" --do-3d --gpu --only 'luxar|jpegxl|jpeg2k'
+    --root "$WS/Fluo-N3DH-CE" --do-3d --gpu --only 'luxar|jpegxl'
