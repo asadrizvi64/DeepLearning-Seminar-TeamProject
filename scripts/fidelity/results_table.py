@@ -35,8 +35,10 @@ RADII = (0.4, 0.6, 0.8)
 FRAMES = {
     'ce_t150': ('01', 150, 'main', [C1 / 'pilot_ce_t150']),
     'ce_t194': ('01', 194, 'main', [C1 / 'pilot_ce_t194']),
-    'ce_s02_t150': ('02', 150, 'main', [C2 / 'pilot_ce_s02_t150', C2 / 'pilot_ce_s02_t150_hi']),
-    'ce_s02_t180': ('02', 180, 'main', [C2 / 'pilot_ce_s02_t180', C2 / 'pilot_ce_s02_t180_hi']),
+    'ce_s02_t150': ('02', 150, 'main', [C2 / 'pilot_ce_s02_t150', C2 / 'pilot_ce_s02_t150_hi',
+                                        CA1 / 'pilot_ce_s02_t150_k64']),
+    'ce_s02_t180': ('02', 180, 'main', [C2 / 'pilot_ce_s02_t180', C2 / 'pilot_ce_s02_t180_hi',
+                                        CA1 / 'pilot_ce_s02_t180_k64']),
     'ce_s01_t100': ('01', 100, 'cliff', [C2 / 'pilot_ce_s01_t100']),
 }
 for _seq, _ts in (('01', (110, 130, 170, 185)), ('02', (110, 130, 165, 185))):

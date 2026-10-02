@@ -139,6 +139,20 @@ def main():
             f'LoG {kl:.3f}, Cellpose {kc:.3f}')
         safe &= kl >= 0.95
     say(f'**Verdict: {"SAFE for blob detection -- limit the PSNR-blind claim to hand-chosen budgets" if safe else "LOSES NUCLEI"}**')
+    say('Extension to embryo 2 (not part of the committed rule; full-data fits at K*):')
+    for fr in (150, 180):
+        cal = REPO / 'runs' / 'fidelity_cluster3' / 'fidelity' / f'calibrate_ce_s02_t{fr}' / 'summary.json'
+        if not cal.exists():
+            continue
+        s = json.load(open(cal))
+        k = s['k_star']
+        log, cp = data[('s02', fr)]
+        kl, kc = log[log.method == f'luxar_K{k}'], cp[cp.method == f'luxar_K{k}']
+        if kl.empty or kc.empty:
+            say(f'- s02 t{fr}: K* = {k} ({s["curve_type"]}); fit at K* not scored yet')
+            continue
+        say(f'- s02 t{fr}: K* = {k} ({s["curve_type"]}), ~{float(kl.ratio.iloc[0]):.0f}x: '
+            f'LoG {float(kl[R].iloc[0]):.3f}, Cellpose {float(kc[R].iloc[0]):.3f}')
     say()
 
     # ---- Rule 5: Luxar vs JPEG2000 at exactly the same bytes (paired CIs, matched_pairs.py)

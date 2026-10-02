@@ -30,6 +30,8 @@ REPO = Path(__file__).resolve().parents[2]
 F = REPO / 'runs' / 'fidelity'
 C1 = REPO / 'runs' / 'fidelity_cluster' / 'fidelity'
 C2 = REPO / 'runs' / 'fidelity_cluster2' / 'fidelity'
+C3 = REPO / 'runs' / 'fidelity_cluster3' / 'fidelity'      # embryo-2 calibration, repeats
+CA1 = REPO / 'runs' / 'fidelity_a1' / 'fidelity'          # A1 fits, embryo-2 K=64000 fits
 PAPER = REPO / 'paper'
 KEY = 'kept@0.6'
 MAIN = [('s01', 150), ('s01', 194), ('s02', 150), ('s02', 180)]
@@ -41,8 +43,8 @@ TAG = {('s01', 150): 'ce_t150', ('s01', 194): 'ce_t194', ('s02', 150): 'ce_s02_t
 RUNS = {  # frame -> (Luxar cluster run dirs, gpu)
     ('s01', 150): ([C1 / 'pilot_ce_t150'], 'A100'),
     ('s01', 194): ([C1 / 'pilot_ce_t194'], 'A100'),
-    ('s02', 150): ([C2 / 'pilot_ce_s02_t150', C2 / 'pilot_ce_s02_t150_hi'], 'H100'),
-    ('s02', 180): ([C2 / 'pilot_ce_s02_t180', C2 / 'pilot_ce_s02_t180_hi'], 'H100'),
+    ('s02', 150): ([C2 / 'pilot_ce_s02_t150', C2 / 'pilot_ce_s02_t150_hi', CA1 / 'pilot_ce_s02_t150_k64'], 'H100'),
+    ('s02', 180): ([C2 / 'pilot_ce_s02_t180', C2 / 'pilot_ce_s02_t180_hi', CA1 / 'pilot_ce_s02_t180_k64'], 'H100'),
     ('s01', 100): ([C2 / 'pilot_ce_s01_t100'], 'H100'),
 }
 DETS = [('log', 'LoG'), ('watershed', 'Watershed'), ('cellpose', 'Cellpose')]
@@ -79,6 +81,8 @@ def load_luxar_and_psnr():
         d['fr'] = [fr] * len(d)
         ps.append(d[['fr', 'method', 'bytes', 'psnr']])
         for run in runs:
+            if not (run / 'rate_detectability.csv').exists():
+                continue
             m = json.load(open(run / 'meta.json'))
             d = pd.read_csv(run / 'rate_detectability.csv')
             d = d[d.method.str.startswith('luxar')]     # codec rows there are pre-fix
@@ -172,16 +176,24 @@ def main():
     N['PSNRjtkWins'] =f"{int((pj.drop_duplicates(['frame', 'method']).psnr_codec > pj.drop_duplicates(['frame', 'method']).psnr_lux).sum())} of {pj.drop_duplicates(['frame', 'method']).shape[0]}"
 
     # ---- Luxar's own budget K*
+    # scored on every main frame whose full-data fit at K* exists (embryo 2: the _k64 runs)
     ks, kr, kv = [], [], {n: [] for _, n in DETS}
-    kj = []
-    for fr in (150, 194):
-        s = json.load(open(C2 / f'calibrate_ce_s01_t{fr}' / 'summary.json'))
-        k = s['k_star']
+    kj, k_frames = [], []
+    for fr in MAIN:
+        cal = (C2 if fr[0] == 's01' else C3) / f'calibrate_ce_{fr[0]}_t{fr[1]}' / 'summary.json'
+        if not cal.exists():
+            continue
+        k = json.load(open(cal))['k_star']
         ks.append(k)
-        kr.append(float(lux[(lux.fr == ('s01', fr)) & (lux.method == f'luxar_K{k}')].ratio.iloc[0]))
+        if not all(len(D[det][(D[det].fr == fr) & (D[det].method == f'luxar_K{k}')]) for det, _ in DETS):
+            continue
+        k_frames.append(fr)
+        kr.append(float(lux[(lux.fr == fr) & (lux.method == f'luxar_K{k}')].ratio.iloc[0]))
         for det, name in DETS:
-            kv[name].append(float(D[det][(D[det].fr == ('s01', fr)) & (D[det].method == f'luxar_K{k}')][KEY].iloc[0]))
-        kj += list(pj[(pj.fr == ('s01', fr)) & (pj.method == f'luxar_K{k}')].kept_codec)
+            kv[name].append(float(D[det][(D[det].fr == fr) & (D[det].method == f'luxar_K{k}')][KEY].iloc[0]))
+        kj += list(pj[(pj.fr == fr) & (pj.method == f'luxar_K{k}')].kept_codec)
+    N['KstarFrames'] = str(len(k_frames))
+    N['KstarCalFrames'] = str(len(ks))
     N['Kstar'] = f'{ks[0]:,}'.replace(',', '{,}')
     N['KstarRatio'] = times(min(kr), max(kr))
     for _, name in DETS:
@@ -405,8 +417,7 @@ def main():
         'results: blob-detector advantage exists (LuxAdv*, EarlyAdv* defined)':
             'LuxAdvPts' in N and 'EarlyAdvPts' in N,
         'limitations: embryo-2 calibration recommends the same K* as embryo 1':
-            all(json.load(open(REPO / 'runs' / 'fidelity_cluster3' / 'fidelity' / f'calibrate_ce_s02_t{t}'
-                               / 'summary.json'))['k_star'] == ks[0] for t in (150, 180)),
+            len(set(ks)) == 1 and len(ks) == 4,
     }
     bad = [c for c, ok in claims.items() if not ok]
     if bad:

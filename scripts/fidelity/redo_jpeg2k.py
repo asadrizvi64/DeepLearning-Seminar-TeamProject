@@ -50,6 +50,8 @@ def supersede(tag, cdir):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('tags', nargs='+')
+    p.add_argument('--add-only', action='store_true',
+                   help='frames encoded after the fix: only add JPEG2000 at new Luxar sizes')
     args = p.parse_args()
     for tag in args.tags:
         cdir = F / f'codecs_{tag}'
@@ -72,13 +74,19 @@ def main():
         lux_bytes = sorted({int(f.stem.rsplit('_', 1)[1])
                             for d in F.glob(f'luxar_render_{tag}*') for f in (d / 'recon').glob('luxar_K*.npz')})
         targets = sorted({k * 1024 for k in KIB} | set(lux_bytes))
-        n_old = supersede(tag, cdir)
-        print(f'{tag}: moved {n_old} old JPEG2000 volumes; {len(targets)} targets '
-              f'({len(lux_bytes)} at Luxar sizes)', flush=True)
-
         csv = cdir / 'rate_detectability.csv'
         keep = pd.read_csv(csv)
-        keep = keep[keep.method != 'jpeg2k']
+        if args.add_only:
+            # post-fix frames: keep the (correct) JPEG2000 already there, add only the sizes
+            # that no existing JPEG2000 volume matches within 2%
+            have = keep[keep.method == 'jpeg2k'].bytes.tolist()
+            targets = [t for t in targets if not any(abs(h / t - 1) <= 0.02 for h in have)]
+            print(f'{tag}: adding {len(targets)} JPEG2000 sizes ({len(lux_bytes)} Luxar fits)', flush=True)
+        else:
+            n_old = supersede(tag, cdir)
+            keep = keep[keep.method != 'jpeg2k']
+            print(f'{tag}: moved {n_old} old JPEG2000 volumes; {len(targets)} targets '
+                  f'({len(lux_bytes)} at Luxar sizes)', flush=True)
         rows = []
         for tgt in targets:
             rec, nb, prm = rd.jpeg2k(crop, tgt)
