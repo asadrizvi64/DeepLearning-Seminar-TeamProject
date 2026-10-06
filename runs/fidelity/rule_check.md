@@ -57,15 +57,21 @@ Extension to embryo 2 (not part of the committed rule; full-data fits at K*):
 
 ## 5. Luxar vs JPEG2000 at the same bytes (paired 95% CI over nuclei)
 - cellpose: 86 pairs on 13 frames -- JPEG2000 better 63, no difference 23, Luxar better 0
-- cellpose3d: 30 pairs on 4 frames -- JPEG2000 better 8, no difference 14, Luxar better 8
+- cellpose3d: 78 pairs on 12 frames -- JPEG2000 better 28, no difference 36, Luxar better 14
+    - Luxar better: E1 t130 luxar_K4000 255x, +3.7 points [+1.2, +7.0]
+    - Luxar better: E1 t170 luxar_K16000 90x, +4.3 points [+0.4, +8.3]
+    - Luxar better: E2 t130 luxar_K16000 89x, +3.3 points [+0.7, +6.8]
     - Luxar better: E2 t150 luxar_K32000 47x, +7.5 points [+3.3, +12.6]
     - Luxar better: E2 t150 luxar_K16000 90x, +7.5 points [+3.0, +13.2]
     - Luxar better: E2 t150 luxar_K8000 136x, +9.4 points [+4.9, +15.0]
     - Luxar better: E2 t150 luxar_K4000 227x, +4.4 points [+0.6, +8.8]
+    - Luxar better: E2 t165 luxar_K16000 88x, +11.9 points [+6.8, +17.3]
+    - Luxar better: E2 t165 luxar_K4000 219x, +9.3 points [+5.1, +14.2]
     - Luxar better: E2 t180 luxar_K32000 46x, +10.4 points [+6.2, +14.8]
     - Luxar better: E2 t180 luxar_K16000 87x, +8.6 points [+4.2, +13.3]
     - Luxar better: E2 t180 luxar_K8000 131x, +11.9 points [+7.4, +17.1]
     - Luxar better: E2 t180 luxar_K4000 218x, +5.6 points [+1.1, +10.0]
+    - Luxar better: E2 t185 luxar_K16000 86x, +8.8 points [+4.5, +13.5]
 - log: 86 pairs on 13 frames -- JPEG2000 better 33, no difference 33, Luxar better 20
     - Luxar better: E1 t100 luxar_K8000 159x, +8.3 points [+2.4, +15.2]
     - Luxar better: E1 t100 luxar_K4000 263x, +10.7 points [+4.5, +18.3]
