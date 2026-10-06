@@ -43,28 +43,49 @@
 - s01 t100: 3.1/nuc 1.10, 6.5/nuc 1.10, 10.4/nuc 1.08, 17.2/nuc 1.07, 26.0/nuc 1.07, 58.7/nuc 1.06
 - s01 t150: 1.7/nuc 0.87, 5.5/nuc 0.97, 13.3/nuc 1.01, 30.2/nuc 1.00, 56.4/nuc 1.01, 103.7/nuc 1.00, 209.1/nuc 1.01
 - s01 t194: 1.0/nuc 0.67, 3.2/nuc 0.91, 7.3/nuc 0.96, 16.4/nuc 0.97, 30.9/nuc 0.98, 56.6/nuc 1.00, 114.9/nuc 1.01
-- s02 t150: 2.3/nuc 0.85, 4.1/nuc 0.98, 6.0/nuc 1.01, 9.6/nuc 1.03, 13.3/nuc 1.03, 30.3/nuc 1.03, 53.6/nuc 1.04, 115.0/nuc 1.04
-- s02 t180: 1.3/nuc 0.66, 2.3/nuc 0.87, 3.4/nuc 0.93, 5.4/nuc 0.99, 7.5/nuc 1.01, 16.9/nuc 1.02, 29.7/nuc 1.03, 63.9/nuc 1.04
+- s02 t150: 2.3/nuc 0.85, 4.1/nuc 0.98, 6.0/nuc 1.01, 9.6/nuc 1.03, 13.3/nuc 1.03, 30.3/nuc 1.03, 53.6/nuc 1.04, 115.0/nuc 1.04, nan/nuc 1.03
+- s02 t180: 1.3/nuc 0.66, 2.3/nuc 0.87, 3.4/nuc 0.93, 5.4/nuc 0.99, 7.5/nuc 1.01, 16.9/nuc 1.02, 29.7/nuc 1.03, 63.9/nuc 1.04, nan/nuc 1.02
 **Verdict (frame 100): NOT CONTRADICTED -- never below 90% (lowest budget 3.1/nuc)**
 
 ## 3. Luxar's own budget K*
 - s01 t150: K* = 64000 (signal_limited, still climbing), ~30x: LoG 1.005, Cellpose 0.965
 - s01 t194: K* = 64000 (signal_limited, still climbing), ~28x: LoG 1.006, Cellpose 0.983
 **Verdict: SAFE for blob detection -- limit the PSNR-blind claim to hand-chosen budgets**
+Extension to embryo 2 (not part of the committed rule; full-data fits at K*):
+- s02 t150: K* = 64000 (signal_limited), ~25x: LoG 1.028, Cellpose 0.921
+- s02 t180: K* = 64000 (signal_limited), ~25x: LoG 1.021, Cellpose 0.889
 
 ## 5. Luxar vs JPEG2000 at the same bytes (paired 95% CI over nuclei)
-- cellpose: 36 pairs on 5 frames -- JPEG2000 better 25, no difference 11, Luxar better 0
-- log: 36 pairs on 5 frames -- JPEG2000 better 11, no difference 14, Luxar better 11
+- cellpose: 86 pairs on 13 frames -- JPEG2000 better 63, no difference 23, Luxar better 0
+- cellpose3d: 30 pairs on 4 frames -- JPEG2000 better 8, no difference 14, Luxar better 8
+    - Luxar better: E2 t150 luxar_K32000 47x, +7.5 points [+3.3, +12.6]
+    - Luxar better: E2 t150 luxar_K16000 90x, +7.5 points [+3.0, +13.2]
+    - Luxar better: E2 t150 luxar_K8000 136x, +9.4 points [+4.9, +15.0]
+    - Luxar better: E2 t150 luxar_K4000 227x, +4.4 points [+0.6, +8.8]
+    - Luxar better: E2 t180 luxar_K32000 46x, +10.4 points [+6.2, +14.8]
+    - Luxar better: E2 t180 luxar_K16000 87x, +8.6 points [+4.2, +13.3]
+    - Luxar better: E2 t180 luxar_K8000 131x, +11.9 points [+7.4, +17.1]
+    - Luxar better: E2 t180 luxar_K4000 218x, +5.6 points [+1.1, +10.0]
+- log: 86 pairs on 13 frames -- JPEG2000 better 33, no difference 33, Luxar better 20
     - Luxar better: E1 t100 luxar_K8000 159x, +8.3 points [+2.4, +15.2]
     - Luxar better: E1 t100 luxar_K4000 263x, +10.7 points [+4.5, +18.3]
     - Luxar better: E1 t100 luxar_K3000 323x, +9.5 points [+3.4, +16.7]
     - Luxar better: E1 t100 luxar_K2000 395x, +9.5 points [+3.5, +16.9]
     - Luxar better: E1 t100 luxar_K1500 459x, +8.3 points [+2.4, +15.4]
     - Luxar better: E1 t100 luxar_K1000 537x, +9.5 points [+3.4, +16.9]
+    - Luxar better: E1 t110 luxar_K2000 393x, +9.6 points [+4.1, +16.1]
+    - Luxar better: E1 t110 luxar_K1500 456x, +6.4 points [+1.0, +12.1]
+    - Luxar better: E1 t130 luxar_K4000 255x, +3.5 points [+1.2, +6.6]
+    - Luxar better: E1 t130 luxar_K2000 381x, +2.4 points [+0.6, +4.8]
+    - Luxar better: E2 t110 luxar_K16000 91x, +7.4 points [+2.1, +13.8]
+    - Luxar better: E2 t110 luxar_K4000 231x, +6.3 points [+2.0, +12.0]
+    - Luxar better: E2 t110 luxar_K2000 338x, +6.3 points [+2.0, +12.1]
+    - Luxar better: E2 t150 luxar_K64000 25x, +3.4 points [+0.5, +6.8]
     - Luxar better: E2 t150 luxar_K32000 47x, +3.4 points [+1.1, +6.2]
     - Luxar better: E2 t150 luxar_K16000 90x, +4.5 points [+1.1, +8.4]
     - Luxar better: E2 t150 luxar_K8000 136x, +3.4 points [+0.5, +6.8]
     - Luxar better: E2 t150 luxar_K4000 227x, +3.4 points [+0.5, +6.9]
+    - Luxar better: E2 t165 luxar_K16000 88x, +3.6 points [+1.1, +6.5]
     - Luxar better: E2 t180 luxar_K32000 46x, +2.7 points [+0.9, +4.9]
-- watershed: 36 pairs on 5 frames -- JPEG2000 better 23, no difference 13, Luxar better 0
+- watershed: 86 pairs on 13 frames -- JPEG2000 better 63, no difference 23, Luxar better 0
 **Verdict: Luxar better somewhere -- the paper names these combinations**
