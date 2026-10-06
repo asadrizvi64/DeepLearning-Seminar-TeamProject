@@ -16,10 +16,10 @@ Cellpose 3D mode refuted that (the penalty is from slice-wise processing).
 
 | # | Claim (paper wording) | Evidence | Rule / verdict | Status |
 |---|---|---|---|---|
-| C1 | Below ~300x the winner depends on the detector: LoG (+1.2) and 3D Cellpose (+3.7) favour splats, watershed (−4.2) and 2D Cellpose (−11.7) favour JPEG2000 (points, Luxar − JPEG2000) | 86 matched pairs (LoG/WS/CP2D), 78 (CP3D), 13 frames | 5 (paired CIs) | solid |
+| C1 | Frame level (12 frames, Wilcoxon, Holm over 8 tests), below ~300x: 3D Cellpose favours splats (+3.5 points, 10/12 frames, p=0.010); watershed (−4.0) and 2D Cellpose (−9.4) favour JPEG2000 on 12/12 (p=0.004); LoG NOT consistent (+1.3, 8/12, p=0.11; embryo 2 only) | frame_level.csv; 86/78 matched pairs | 5 + frame-level tests | solid (LoG claim withdrawn) |
 | C2 | Watershed and 2D Cellpose never keep significantly fewer nuclei with JPEG2000 | JPEG2000 better in 63/86 pairs each, Luxar 0 | 5 | solid |
 | C3 | Beyond ~300x every detector favours JPEG2000; splats lose nuclei abruptly | far-ratio means −17 to −20 points | 5 | solid |
-| C4 | PSNR favours JPEG2000 in every matched pair (80/80, by 1.0–6.8 dB) | run CSVs | descriptive | solid |
+| C4 | PSNR favours JPEG2000 on every frame (12/12, both regimes) and in every pair (80/80): right at extreme ratios and for slice-wise segmentation, wrong for 3D Cellpose at moderate ratios — insufficient, not useless | frame_level.csv | descriptive | solid (headline) |
 | C5 | Budget cliff: LoG crosses 90% at 1.1–3.1 splats per nucleus on all 12 frames | a1_crossings | A1 cliff HOLDS 8/8 (+ 4 first frames) | solid |
 | C6 | PSNR misses the cliff — narrowed: PSNR flat (≤2.6 dB span) but the pre-registered test held on only 4/8 added frames (cliff below K=1000 on small frames) | a1 rule | A1 PSNR DOES NOT HOLD (4/8) | qualified, reported as failed |
 | C7 | 2D Cellpose penalty vs JPEG-XL at 45–94x | 4 first frames (1a) + 8 added | 1a REPLICATES; A1 HOLDS 8/8 | solid (for 2D-stitched) |
@@ -37,3 +37,7 @@ Cellpose 3D mode refuted that (the penalty is from slice-wise processing).
 - v1.0 "splats beat JPEG2000 at ≳200x" (rule 1b): void; on the corrected codec it does not hold.
 - "Out-of-distribution for a learned segmenter" mechanism: refuted by Cellpose 3D mode.
 - Downsampling and ZFP: naive configurations; removed from comparisons.
+
+## Fixed 2026-10-06
+
+- One corrupted Cellpose cache (E2 t130 K16000, all-zero centroids from the run interrupted on 2026-10-03) had scored a Luxar volume as 0% kept and inflated the 2D-Cellpose deficit (−13.0 → −9.4 after the fix). Caches are now written atomically and checked (`check_caches.py`) before every analysis.
