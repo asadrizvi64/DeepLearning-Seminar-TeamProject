@@ -7,3 +7,10 @@ paper/*.bbl
 paper/*.blg
 paper/*.out
 runs/fidelity/*/recon_superseded_jpeg2k/
+
+# kept local, never published (colleague archive, raw volumes, local config, Office lock files)
+runs.zip
+runs 2/
+runs/colleague_full_volume.npy
+.claude/settings.local.json
+~$*
