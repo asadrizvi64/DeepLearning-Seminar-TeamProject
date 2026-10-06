@@ -24,6 +24,7 @@ PY=${PY:-C:/Users/HP/cpenv/Scripts/python.exe}
 export PYTHONUTF8=1 PYTHONIOENCODING=utf-8 MPLBACKEND=Agg
 
 $PY scripts/test_metrics.py                 # matcher / scorer regression suite first
+$PY scripts/fidelity/check_caches.py       # no corrupted detection caches
 $PY scripts/fidelity/results_table.py       # runs/fidelity/results_all.csv (the single table)
 $PY scripts/fidelity/matched_pairs.py       # runs/fidelity/matched_pairs.csv (Luxar vs same-size codecs, CIs)
 $PY scripts/fidelity/check_rules.py         # runs/fidelity/rule_check.md  (rules 1-3, 5)

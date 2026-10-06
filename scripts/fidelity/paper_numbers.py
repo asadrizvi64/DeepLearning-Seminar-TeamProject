@@ -182,6 +182,46 @@ def main():
         N[f'FarLux{key}'] = rng(far.kept_lux)
     one = pj.drop_duplicates(['frame', 'method'])
     N['PSNRjtkWins'] = f'{int((one.psnr_codec > one.psnr_lux).sum())} of {len(one)}'
+
+    # ---- frame-level analysis: frames as independent units (the broad claims rest on this,
+    # not on per-pair intervals). Per frame and regime: mean Luxar - JPEG2000 over its pairs;
+    # cluster bootstrap over frames (B=10000) for the CI; two-sided Wilcoxon signed-rank over
+    # frames, Holm-adjusted across the 8 detector x regime tests. PSNR row is descriptive.
+    from scipy.stats import wilcoxon
+    rng_ = np.random.default_rng(0)
+    FL = []
+    for det, label, key in [('psnr', 'PSNR (dB)', 'PSNR')] + DETS:
+        for reg, sel in (('mod', pj.ratio < FAR), ('far', pj.ratio >= FAR)):
+            g = pj[sel & (pj.detector == ('log' if det == 'psnr' else det))]
+            if det == 'psnr':
+                m = g.groupby('frame').apply(lambda x: (x.psnr_lux - x.psnr_codec).mean())
+            else:
+                m = 100 * g.groupby('frame')['diff'].mean()
+            boot = [rng_.choice(m.values, len(m)).mean() for _ in range(10000)]
+            FL.append(dict(det=det, label=label, key=key, reg=reg, n=len(m), mean=m.mean(),
+                           lo=np.percentile(boot, 2.5), hi=np.percentile(boot, 97.5),
+                           pos=int((m > 0).sum()), neg=int((m < 0).sum()),
+                           p=wilcoxon(m.values).pvalue if det != 'psnr' else np.nan,
+                           e1=m[m.index.str.startswith('E1')].mean(), e2=m[m.index.str.startswith('E2')].mean()))
+    FL = pd.DataFrame(FL)
+    t = FL[FL.det != 'psnr'].sort_values('p')
+    run = 0.0
+    for i, (idx, r) in enumerate(t.iterrows()):                       # Holm step-down
+        run = max(run, min(1.0, (len(t) - i) * r.p))
+        FL.loc[idx, 'p_holm'] = run
+    FL.to_csv(F / 'frame_level.csv', index=False)
+    fmt = lambda x: f'{x:+.1f}'.replace('-', '$-$').replace('+', '$+$')
+    for _, r in FL.iterrows():
+        k = f"Fr{'Mod' if r.reg == 'mod' else 'Far'}{r.key}"
+        N[k] = fmt(r['mean'])
+        N[k + 'CI'] = f"{fmt(r.lo)} to {fmt(r.hi)}"
+        N[k + 'Pos'], N[k + 'Neg'] = str(r.pos), str(r.neg)
+        if r.det != 'psnr':
+            N[k + 'P'] = f'{r.p_holm:.3f}' if r.p_holm >= 0.001 else '$<$0.001'
+            N[k + 'EOne'], N[k + 'ETwo'] = fmt(r.e1), fmt(r.e2)
+    N['FrN'] = str(int(FL.n.max()))
+    farj = FL[(FL.reg == 'far') & (FL.det != 'psnr')].neg
+    N['FrFarNeg'] = f'{farj.min()}--{farj.max()}' if farj.min() != farj.max() else str(farj.min())
     N['DPSNR'] = f"{(one.psnr_codec - one.psnr_lux).min():.1f}--{(one.psnr_codec - one.psnr_lux).max():.1f}\\,dB"
 
     # ---- E1 t100 (larger, early nuclei): reported separately
@@ -330,6 +370,26 @@ def main():
             cells.append(v + f'$^{{{g.frame.nunique()}}}$')
         lines.append(' & '.join(cells) + ' \\\\')
     lines += ['\\bottomrule', '\\end{tabular}']
+    (PAPER / 'table_bins.tex').write_text('\n'.join(lines) + '\n')   # supplementary
+
+    # ---- Table 1 (main): frame-level verdicts, PSNR first -- "PSNR says JPEG2000; detectors: it depends"
+    lines = ['\\begin{tabular}{lrcrc}', '\\toprule',
+             ' & \\multicolumn{2}{c}{below \\SI{300}{\\times}} & \\multicolumn{2}{c}{\\SI{300}{\\times} and beyond} \\\\',
+             '\\cmidrule(lr){2-3}\\cmidrule(lr){4-5}',
+             'Luxar $-$ JPEG2000 & mean [95\\% CI] & L\\,:\\,J & mean [95\\% CI] & L\\,:\\,J \\\\', '\\midrule']
+    f1 = lambda x: f'{x:+.1f}'.replace('-', '$-$')
+    for det, label, key in [('psnr', 'PSNR (dB)', 'PSNR')] + DETS:
+        cells = [label if det != 'psnr' else 'PSNR (dB)']
+        for reg in ('mod', 'far'):
+            r = FL[(FL.det == det) & (FL.reg == reg)].iloc[0]
+            v = f'{f1(r["mean"])} [{f1(r.lo)}, {f1(r.hi)}]'
+            if det != 'psnr' and r.p_holm < 0.05:
+                v = f'\\textbf{{{f1(r["mean"])}}} [{f1(r.lo)}, {f1(r.hi)}]'
+            cells += [v, f'{r.pos}\\,:\\,{r.neg}']
+        lines.append(' & '.join(cells) + ' \\\\')
+        if det == 'psnr':
+            lines.append('\\midrule')
+    lines += ['\\bottomrule', '\\end{tabular}']
     (PAPER / 'table_main.tex').write_text('\n'.join(lines) + '\n')
 
     # ---- Table 2: radius sensitivity (paper frames; raw found summed; kept at ~90x mean)
@@ -443,9 +503,18 @@ def main():
     mod = pj[pj.ratio < FAR]
     far = pj[pj.ratio >= FAR]
     sgn = lambda det: mod[mod.detector == det]['diff'].mean()
+    fr_ = lambda det, reg: FL[(FL.det == det) & (FL.reg == reg)].iloc[0]
     claims = {
-        'moderate ratios: LoG and Cellpose-3D favour Luxar on average, watershed and Cellpose-2D favour JPEG2000':
-            sgn('log') > 0 and sgn('cellpose3d') > 0 and sgn('watershed') < 0 and sgn('cellpose') < 0,
+        'frame level, below 300x: 3D Cellpose favours splats (Holm p < .05, >= 9 of 12 frames)':
+            fr_('cellpose3d', 'mod').p_holm < 0.05 and fr_('cellpose3d', 'mod').pos >= 9,
+        'frame level, below 300x: watershed and 2D Cellpose favour JPEG2000 (Holm p < .05)':
+            all(fr_(d, 'mod').p_holm < 0.05 and fr_(d, 'mod')['mean'] < 0 for d in ('watershed', 'cellpose')),
+        'frame level, below 300x: LoG shows NO consistent difference (Holm p >= .05)':
+            fr_('log', 'mod').p_holm >= 0.05,
+        'frame level, beyond 300x: every detector favours JPEG2000 (Holm p < .05)':
+            all(fr_(d, 'far').p_holm < 0.05 and fr_(d, 'far')['mean'] < 0 for d, *_ in DETS),
+        'frame level: PSNR favours JPEG2000 on every frame in both regimes':
+            all(fr_('psnr', r).neg == fr_('psnr', r).n for r in ('mod', 'far')),
         'segmenters (watershed, Cellpose 2D) never significantly favour Luxar':
             N['PairsLWS'] == '0' and N['PairsLCP'] == '0',
         'beyond ~300x JPEG2000 leads on average for every detector':

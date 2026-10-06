@@ -26,6 +26,7 @@ the same matcher, radii (0.4/0.6/0.8 D) and faint/bright split as cellpose_score
         runs/fidelity/luxar_render_ce_t150 --out runs/fidelity/watershed_ce_t150.csv
 """
 import argparse
+import os
 import importlib.util
 import json
 from pathlib import Path
@@ -118,7 +119,11 @@ def main():
         else:
             vol = src if isinstance(src, np.ndarray) else np.load(src)['rec'].astype(np.float32)
             pred = detect(vol, D)
-            np.save(cfile, pred)
+            # atomic: an interrupted run must never leave a half-written cache (2026-10-03 left
+            # one all-zero centroid file that scored a Luxar volume as 0% kept)
+            tmp = cfile.with_name(cfile.name + '.tmp.npy')
+            np.save(tmp, pred)
+            os.replace(tmp, cfile)
         row = dict(group=group, file=fname, method=method, bytes=nbytes,
                    ratio=crop.nbytes / nbytes, n_pred=int(len(pred)))
         for fac in cps.RADIUS_FACTORS:

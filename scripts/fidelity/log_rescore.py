@@ -11,6 +11,7 @@ scores at 0.4 / 0.6 / 0.8 x D with the dense budget N = number of true nuclei.
         runs/fidelity/luxar_render_ce_t150 --out runs/fidelity/log_ce_t150.csv
 """
 import argparse
+import os
 import importlib.util
 import json
 from pathlib import Path
@@ -65,7 +66,11 @@ def main():
             order = np.load(cfile)
         else:
             _, order, _ = rd.ranked_candidates(np.load(src)['rec'].astype(np.float32))
-            np.save(cfile, order)
+            # atomic: an interrupted run must never leave a half-written cache (2026-10-03 left
+            # one all-zero centroid file that scored a Luxar volume as 0% kept)
+            tmp = cfile.with_name(cfile.name + '.tmp.npy')
+            np.save(tmp, order)
+            os.replace(tmp, cfile)
         row = dict(group=group, file=fname, method=method, bytes=nbytes, ratio=crop.nbytes / nbytes,
                    n_cand=int(len(order)))
         top = order[:n_budget]

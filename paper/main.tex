@@ -34,13 +34,15 @@ of bytes on disk, standard analysis still finds the nuclei. On \NFrames{} densel
 frames from two \emph{C.~elegans} embryos (\NlabTotal{} labelled nuclei), we pair each of
 \NFits{} fits of a Gaussian-splat compressor (Luxar) with JPEG2000 encoded to exactly the
 same bytes, and score four detectors against human labels: a blob detector, a classical 3D
-watershed, and Cellpose in its 2D-stitched and 3D modes. Below $\approx$\SI{300}{\times} the
-answer depends on the detector: the blob detector and 3D Cellpose find slightly more nuclei in
-splat reconstructions (\ModDiffLoG{} and \ModDiffCPthree{} points on average), while the
-watershed and 2D Cellpose find more in JPEG2000 (\ModDiffWS{} and \ModDiffCP) and never
-significantly fewer. Beyond that, at $\lesssim$3 splats per nucleus, splats lose nuclei
-abruptly under every detector while JPEG2000 degrades gently. PSNR favours JPEG2000 in all
-\PSNRjtkWins{} pairs and predicts none of this. Gaussian volume compression should be
+watershed, and Cellpose in its 2D-stitched and 3D modes. PSNR favours JPEG2000 on every frame
+and in all \PSNRjtkWins{} pairs. The detectors disagree: below $\approx$\SI{300}{\times}, 3D
+Cellpose finds more nuclei in splat reconstructions (\FrModCPthree{} points, \FrModCPthreePos{}
+of \FrN{} frames), the watershed and 2D Cellpose find more in JPEG2000 (\FrModWS{} and
+\FrModCP{} points, all \FrN{} frames), and the blob detector shows no consistent difference.
+The same network thus changes sides between its 2D and 3D modes. Beyond
+$\approx$\SI{300}{\times}, at $\lesssim$3 splats per nucleus, splats lose nuclei abruptly and
+every detector favours JPEG2000. PSNR is therefore not wrong but insufficient: it cannot tell
+which representation is safer for a given analysis. Gaussian volume compression should be
 evaluated at matched bytes, against a verified codec, with the detector that will be used.
 \end{abstract}
 
@@ -63,12 +65,12 @@ PSNR \cite{koff2006overview}. Gaussian volume compression has not been held to t
 nor compared with standard codecs at identical stored bytes.
 
 \textbf{Contributions.} (i)~A rate--detectability protocol: identical bytes on disk, dense
-human labels, four detectors, paired bootstrap intervals over nuclei, and pass/fail rules
-committed before each new measurement, including a replication on eight further frames.
-(ii)~Whether splats or a standard codec keep more nuclei depends on the detector: volumetric
-detectors gain slightly from splats at moderate ratios, slice-wise and threshold-based
-segmenters lose---and the same network changes sides between its 2D and 3D modes.
-(iii)~A budget cliff at $\lesssim$3 splats per nucleus on every frame, invisible to PSNR.
+human labels, four detectors, frame-level tests with paired intervals over nuclei, and
+pass/fail rules committed before each new measurement, including a replication on eight
+further frames. (ii)~PSNR picks the same winner at every size, but whether splats or a
+standard codec keep more nuclei depends on the detector---and the same network changes sides
+between its 2D and 3D modes. (iii)~A budget cliff at $\lesssim$3 splats per nucleus on every
+frame, which PSNR does not reveal.
 (iv)~A baseline pitfall: a common JPEG2000 binding silently encodes a 3D array along the
 wrong axes, which had reversed our own high-ratio conclusion.
 
@@ -127,8 +129,9 @@ volumes they find \RecallLoG, \RecallWS, \RecallCP{} and \RecallCPthree{} of the
 nuclei. Detections match labels one-to-one within $0.6D$ (Table~\ref{tab:radius} varies it).
 \emph{Nuclei kept} = nuclei found after compression / found in the raw volume by the same
 detector. Size-matched differences carry 95\% bootstrap intervals over labelled nuclei, resampled
-jointly for raw and both reconstructions; they are per pair and not corrected for multiple
-comparisons, so we report counts of pairs. Pass/fail rules were committed before each new
+jointly for raw and both reconstructions (Fig.~\ref{fig:matched}); they are per pair and not
+corrected for multiple comparisons, so the claims rest on frame-level tests: frames as
+independent units, Wilcoxon signed-rank, Holm-corrected (Table~\ref{tab:main}). Pass/fail rules were committed before each new
 measurement (rules, code and results:
 \url{https://github.com/asadrizvi64/DeepLearning-Seminar-TeamProject}); the two that failed are
 reported in narrowed form.
@@ -143,37 +146,45 @@ keep more nuclei; triangles: below $-48$ points. Dotted line: \SI{300}{\times}.}
 \label{fig:matched}
 \end{figure*}
 
-\textbf{Splats vs.\ JPEG2000 at identical bytes} (Fig.~\ref{fig:matched},
-Table~\ref{tab:main}). Below \SI{300}{\times}, LoG keeps \ModDiffLoG{} points more nuclei in
-Luxar reconstructions on average (Luxar significantly better in \ModLLoG{} of \ModNLoG{} pairs,
-JPEG2000 in \ModJLoG) and 3D Cellpose \ModDiffCPthree{} (\ModLCPthree{} vs.\ \ModJCPthree{} of
-\ModNCPthree). The watershed and 2D Cellpose go the other way: \ModDiffWS{} and \ModDiffCP{}
-points, with JPEG2000 significantly better in \ModJWS{} of \ModNWS{} and \ModJCP{} of \ModNCP{}
-pairs and Luxar never. Beyond \SI{300}{\times} (\FarRatio) every detector favours JPEG2000
-(\FarDiffLoG, \FarDiffWS, \FarDiffCP{} and \FarDiffCPthree{} points); JPEG2000 still keeps
-\FarJtkLoG{} (LoG) and \FarJtkWS{} (watershed) of nuclei there. PSNR is higher for JPEG2000 in
-all \PSNRjtkWins{} pairs, by \DPSNR. JPEG-XL is nearly lossless up to its maximum distance
-(\JXLmax; worst case \JXLworst).
+\textbf{PSNR says JPEG2000; the detectors say it depends} (Table~\ref{tab:main},
+Fig.~\ref{fig:matched}). We treat the \FrN{} frames as independent units and test the mean
+per-frame difference with Wilcoxon signed-rank tests, Holm-corrected over the eight
+detector--regime comparisons. PSNR is higher for JPEG2000 on every frame in both regimes
+and in all \PSNRjtkWins{} pairs (by \DPSNR). Below \SI{300}{\times}, 3D Cellpose favours the
+splats (Luxar $-$ JPEG2000 = \FrModCPthree{} points of nuclei kept, \FrModCPthreePos{} of
+\FrN{} frames, $p_\mathrm{Holm}=\FrModCPthreeP$), whereas the watershed and 2D Cellpose favour
+JPEG2000 (\FrModWS{} and \FrModCP{} points, every frame, $p_\mathrm{Holm}=\FrModWSP$ and
+\FrModCPP). The blob detector shows no consistent difference (\FrModLoG{} points,
+\FrModLoGPos{} of \FrN{} frames, $p_\mathrm{Holm}=\FrModLoGP$): splats help it on embryo~2
+(\FrModLoGETwo) but not embryo~1 (\FrModLoGEOne). Beyond \SI{300}{\times} (up to
+\JtkMaxRatio) every detector favours JPEG2000 on \FrFarNeg{} of \FrN{} frames
+($p_\mathrm{Holm}\le\FrFarLoGP$), by \FrFarLoG{} (LoG) to \FrFarCP{} (2D Cellpose) points;
+JPEG2000 still keeps \FarJtkLoG{} (LoG) and \FarJtkWS{} (watershed) of nuclei there. PSNR is
+thus right at extreme ratios and for slice-wise segmentation, and wrong for 3D Cellpose at
+moderate ratios. JPEG-XL is nearly lossless up to its maximum distance (\JXLmax; worst case
+\JXLworst).
 
 \begin{table}[t]
 \centering
-\caption{Luxar minus JPEG2000 at identical bytes: nuclei kept (points, mean over pairs;
-superscript: frames) and PSNR (dB). Bold: every pair's 95\% interval on the same side of zero.}
+\caption{Luxar minus JPEG2000 at identical bytes, frame level: mean over \FrN{} frames of the
+per-frame mean difference (nuclei kept in points; PSNR in dB), 95\% cluster-bootstrap interval
+over frames, and frames favouring Luxar\,:\,JPEG2000. Bold: Holm-corrected Wilcoxon
+$p<0.05$.}
 \label{tab:main}
-\setlength{\tabcolsep}{2.9pt}
-\input{table_main}
+\setlength{\tabcolsep}{3pt}
+\resizebox{\columnwidth}{!}{\input{table_main}}
 \end{table}
 
-\textbf{Why the detector matters.} Smooth splats act as a denoiser for detectors that pool
+\textbf{Why the detector matters.} Smooth splats can act as a denoiser for detectors that pool
 over a volume: under LoG and 3D Cellpose nuclei kept often exceeds 1 (Luxar at
 \SIrange{45}{94}{\times}: \LuxMidLoG{} and \LuxMidCPthree). Per-slice and threshold-based
 segmenters instead see smooth blobs on a black background with streaks (Fig.~\ref{fig:qual}).
-The same Cellpose network shows this cleanly: against JPEG-XL at \SIrange{45}{94}{\times},
-splats cost it \GapCP{} points in 2D mode (intervals above zero on \GapCIfrac{} frames) but
-gain it \GapCPthree{} in 3D mode, where the 5-point penalty we tested for in advance appeared
-on \RuleGapBigCPthree{} frames---the penalty belongs to slice-wise processing, not to the
-learned model. The watershed sits in between (\GapWS{} points; under the pre-set 5 points on
-\RuleGapSmallWS{} frames).
+The same Cellpose network shows this cleanly. At \SIrange{45}{94}{\times}, JPEG-XL minus
+splats is \GapCP{} points of nuclei kept in 2D mode (intervals above zero on \GapCIfrac{}
+frames) but \GapCPthree{} in 3D mode, where the 5-point penalty we tested for in advance
+appeared on \RuleGapBigCPthree{} frames---the penalty belongs to slice-wise processing, not to
+the learned model. The watershed sits in between (\GapWS{} points; under the pre-set 5 points
+on \RuleGapSmallWS{} frames).
 
 \textbf{The budget cliff and PSNR.} Splats lose nuclei abruptly once they become scarce
 (Fig.~\ref{fig:cliff}): under LoG, nuclei kept crosses 90\% at \CrossRange{} splats per
@@ -214,23 +225,27 @@ nuclei kept near \SI{90}{\times} (mean).}
 
 \section{Discussion and Limitations}
 On this data no storage format is best for every analysis. JPEG-XL is nearly lossless to
-$\approx$\SI{100}{\times}; beyond it, JPEG2000 is the safer choice for segmentation and the only
-safe one past \SI{300}{\times}, while Gaussian splats help volumetric detectors a little at
-moderate ratios, at the cost of minutes of GPU fitting. PSNR ranks the two formats the same way
-at every size and is therefore no guide to any of these outcomes. We recommend comparing
+$\approx$\SI{100}{\times}; beyond it, JPEG2000 is the safer choice for slice-wise and
+threshold-based segmentation and the only safe one past \SI{300}{\times}, while Gaussian splats
+help volumetric Cellpose at moderate ratios, at the cost of minutes of GPU fitting. PSNR is not
+random---its preference for JPEG2000 is right in most of these cases---but it ranks the two
+formats the same way at every size, so it cannot tell which representation is safer for a
+given analysis. We recommend comparing
 Gaussian volume compression with a verified codec at identical bytes, reporting object-level
 recall with the detector that will be used downstream, and checking a splat budget at the
 object level before trusting it (survival is a label-free start).
 
 Limitations: one organism (two embryos, 12 frames); one Gaussian compressor at default
 settings (tuned or entropy-coded splats may fare better); a 2D-per-slice JPEG2000 (a 3D wavelet
-would likely be stronger still); uncorrected per-pair intervals; and a fixed $D$ that suits early, larger nuclei (t100) less well. The same audit for
+would likely be stronger still); frames, not embryos, as the units of replication (two
+embryos); and a fixed $D$ that suits early, larger nuclei (t100) less well. The same audit for
 small low-contrast lesions in CT is future work.
 
 \section{Conclusion}
 Measured at identical bytes against human labels, Gaussian-splat compression keeps nuclei
-well at its own budget, gains or loses a few percent against JPEG2000 at moderate ratios
-depending on the detector, and loses nuclei abruptly below a budget that PSNR cannot identify.
+well at its own budget, gains or loses nuclei against JPEG2000 at moderate ratios depending
+on the detector---even between the 2D and 3D modes of one network---and loses them abruptly
+below a budget that PSNR cannot identify.
 Object-level, size-matched, detector-specific evaluation should accompany Gaussian volume
 compression.
 

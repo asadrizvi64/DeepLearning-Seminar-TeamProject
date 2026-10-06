@@ -29,6 +29,7 @@ Needs the Cellpose environment (cellpose<4):
         runs/fidelity/codecs_ce_t150 runs/fidelity/luxar_render_ce_t150 --out runs/fidelity/cellpose_ce_t150.csv
 """
 import argparse
+import os
 import importlib.util
 import json
 from pathlib import Path
@@ -129,7 +130,11 @@ def main():
                 model = models.Cellpose(gpu=args.gpu, model_type='nuclei')
             vol = src if isinstance(src, np.ndarray) else np.load(src)['rec'].astype(np.float32)
             pred = detect(model, vol, diameter_px, args.do_3d)
-            np.save(cfile, pred)
+            # atomic: an interrupted run must never leave a half-written cache (2026-10-03 left
+            # one all-zero centroid file that scored a Luxar volume as 0% kept)
+            tmp = cfile.with_name(cfile.name + '.tmp.npy')
+            np.save(tmp, pred)
+            os.replace(tmp, cfile)
         row = dict(group=group, file=fname, method=method, bytes=nbytes,
                    ratio=crop.nbytes / nbytes, n_pred=int(len(pred)))
         for fac in RADIUS_FACTORS:

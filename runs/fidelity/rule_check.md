@@ -56,7 +56,7 @@ Extension to embryo 2 (not part of the committed rule; full-data fits at K*):
 - s02 t180: K* = 64000 (signal_limited), ~25x: LoG 1.021, Cellpose 0.889
 
 ## 5. Luxar vs JPEG2000 at the same bytes (paired 95% CI over nuclei)
-- cellpose: 86 pairs on 13 frames -- JPEG2000 better 63, no difference 23, Luxar better 0
+- cellpose: 86 pairs on 13 frames -- JPEG2000 better 62, no difference 24, Luxar better 0
 - cellpose3d: 78 pairs on 12 frames -- JPEG2000 better 28, no difference 36, Luxar better 14
     - Luxar better: E1 t130 luxar_K4000 255x, +3.7 points [+1.2, +7.0]
     - Luxar better: E1 t170 luxar_K16000 90x, +4.3 points [+0.4, +8.3]
