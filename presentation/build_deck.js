@@ -295,6 +295,7 @@ addSection("Simple setup and changes");
      "Support blobs (background): the extra blobs not tied to a cell, for the dimmer tissue between nuclei.",
      "Under-trained: the fit stopped before it had finished improving."],
     ["Are the 230 cells ground truth? No, they come from a detector with fixed settings; the hand-marked checks come later (validation slide and the state-of-the-art test).",
+     "Does this show that the cell-count rule is a good way to pick the budget? No. F1 rose because the budget grew sixfold, from 301 to 1,804 blobs. The rule was never compared with another way of choosing the budget.",
      "Why does PSNR fall with more blobs? The number of fitting steps was fixed at 3,000; more blobs need more steps. We later saw the same confound in our own experiments."]);
 }
 
@@ -382,15 +383,16 @@ addSection("Simple setup and changes");
   txt(s, "Green: nucleus found  ·  red: missed", { x: 0.5, y: 3.9, w: 5.2, h: 0.3, fontSize: 11, color: C.accent5 });
   steps(s, [
     ["WHAT WE CHANGED", "Limited how wide a nucleus blob may grow (10 voxels)"],
-    ["WHY", "Lost faint nuclei had blobs ~30% wider, spread out until no peak was left"],
+    ["WHY", "At the end of fitting, blobs at lost faint nuclei were ~30% wider than at kept ones"],
     ["RESULT", "Faint nuclei found: 13 → 19 of 31. Image quality unchanged; 1 of 4 regions worse"],
   ]);
   notes(s,
-    "We then asked which nuclei are still lost. They are the faint ones, and when we followed their blobs during fitting, the blobs did not fade; they spread out, about 30 percent wider than for nuclei we kept, until there was no peak left to detect. So we capped the width of nucleus blobs. Over four regions, faint nuclei found went from 13 of 31 to 19 of 31, and image quality changed by only 0.01 dB. Honestly: one region got worse, and on the Drosophila data the cap changed nothing.",
+    "We then asked which nuclei are still lost. They are the faint ones. At the end of fitting, the blob nearest to each lost faint nucleus was not dimmer than for the nuclei we kept, but about 30 percent wider, and a wide blob leaves only a flat peak for the detector. So we capped the width of nucleus blobs. With the cap, faint nuclei found went from 13 of 31 to 19 of 31 over four regions, and image quality changed by only 0.01 dB. Honestly: this is one seed, one region got worse, and on the Drosophila data the cap changed nothing. Also, we compared the blobs at the end of fitting; we did not track them through fitting, so the widening is an association that the cap result supports, not a demonstrated cause.",
     ["Faint nucleus: one whose brightness above the surroundings is in the lower half.",
      "Size cap: an upper limit on a blob's size, applied only to the blobs that started on nuclei.",
      "Region: one 64 x 128 x 128 crop of the Tribolium frame."],
-    ["Is +6 nuclei significant? It is one seed and 4 regions, so treat it as promising, not settled. The result survived a scoring-bug fix (it was +7 before)."]);
+    ["Is +6 nuclei significant? It is one seed and 4 regions, so treat it as promising, not settled. The result survived a scoring-bug fix (it was +7 before).",
+     "Did you watch the blobs widen? No. We compared the blob nearest to each nucleus at the end of fitting, not blobs tracked over time. That width comparison was also scored before the scoring-bug fix and could not be redone."]);
 }
 
 // ================================================================ 10. naive vs final
@@ -402,7 +404,7 @@ addSection("Results and validation");
     ["Start on bright peaks", "Akim", "PSNR, phantom", "32.0 dB", "53.1 dB"],
     ["Stretched + rotated blobs", "Akim", "PSNR, real data, median", "20.4 dB", "24.0 dB"],
     ["Grow blobs during fitting", "Akim", "PSNR, ~35-50 blobs", "23.8 dB", "24.3 dB"],
-    ["Blobs set from cell count", "Akim", "cell matching F1", "0.35", "0.76"],
+    ["More blobs, in cell-count units", "Akim", "cell F1, 301 → 1,804 blobs", "0.35", "0.76"],
     ["Repeats of the shape test", "us", "PSNR, 15 fits", "22.3 dB", "25.5 dB"],
     ["One start per nucleus", "us", "nuclei found, of 110", "52%", "71%"],
     ["Bigger position steps", "us", "F1, random starts", "0.64", "0.78"],
@@ -410,10 +412,10 @@ addSection("Results and validation");
   ].map((r) => r.map((t, j) => ({ text: t, options: { bold: j === 4, color: j === 4 ? HEX.accent1 : HEX.dk1, align: j >= 3 ? "center" : "left" } })));
   s.addTable([head].concat(body), { x: 0.5, y: 1.15, w: 9.0, colW: [2.75, 0.75, 2.6, 1.45, 1.45], fontSize: 14, fontFace: "Calibri",
     rowH: 0.36, border: { type: "solid", pt: 0.5, color: "E5E7EB" }, fill: { color: HEX.lt1 } });
-  txt(s, "Each change measured on its own, against the version before it; the numbers are not added together.",
+  txt(s, "Separate comparisons under the stated settings; the numbers are not added together.",
     { x: 0.5, y: 4.62, w: 9.0, h: 0.4, fontSize: 14, color: C.text2 });
   notes(s,
-    "Here are all eight changes side by side, four by Akim and four by us, each compared with the version just before it. I want to be clear that these were measured one at a time, on different data and with different numbers of repeats, so you cannot add them up into one overall improvement. Together they turn a fit that merely looks right into one where the nuclei are found much more reliably.",
+    "Here are all eight changes side by side, four by Akim and four by us. I want to be clear that these are separate comparisons, each under the settings on its own slide, not a chain where every row builds on the one above. They used different data, budgets and numbers of repeats, so you cannot add them up into one overall improvement. One row needs care: the cell-count row shows F1 rising as the budget grows from 301 to 1,804 blobs; it does not show that choosing the budget from the cell count beats another way of choosing it. Together, the changes turn a fit that merely looks right into one where the nuclei are found much more reliably.",
     ["Naive / simple setup: round blobs with random starting positions, default step size, no cap."],
     ["Why not one combined number? Each experiment used a different number of regions, seeds and references; combining them would hide that."]);
 }
@@ -432,7 +434,7 @@ addSection("Results and validation");
     txt(s, big, { x: x + 0.2, y: 1.45, w: 2.45, h: 0.8, fontSize: 32, bold: true, color: col, fontFace: "Cambria" });
     txt(s, small, { x: x + 0.2, y: 2.35, w: 2.45, h: 1.4, fontSize: 15, color: C.text2 });
   });
-  txt(s, "Fitting ranks nuclei better than brightness, but not better than a simple blob filter. With all 457 candidates the raw detector finds 26 of 29.",
+  txt(s, "In the top 100, fitting ranks nuclei better than brightness but not better than a simple blob filter. With all 457 candidates the raw detector finds 26 of 29.",
     { x: 0.5, y: 4.1, w: 9.0, h: 0.7, fontSize: 15, color: C.text2 });
   notes(s,
     "Checks that the fit does what we think. First, shape: the learned blobs are about as stretched as the real nuclei. Second, the honest test against people's annotations: on Drosophila, among the 100 most confident detections, the fitted blobs contain 14 of 29 hand-marked nuclei, the raw image ranked by brightness only 10. So fitting ranks real nuclei higher than brightness does. But third, the stronger baseline: a classic blob filter, LoG, applied to the same raw candidates puts 16 to 18 marked nuclei in the top 100, in seconds and without any fitting. So the fit beats the naive baseline, not the simple strong one. And if the plain detector may use all its candidates it finds 26 of 29, more than any fit. This is better ranking than brightness, not a better detector.",
@@ -441,6 +443,7 @@ addSection("Results and validation");
      "LoG blob filter: ranks the same candidates by how well they look like a round blob of nucleus size."],
     ["How noisy is 14 vs 10? One nucleus is 3.4% of 29; we only call a difference real if it is about 3 nuclei and has the same sign in all seeds (mean of 3 seeds here).",
      "Why 16-18? 16 with LoG scales fixed in advance (1.5-3 micrometres); 18 with a single 2-micrometre scale chosen after seeing results.",
+     "And in the top 200? There the best fit (uniform sampling, 22.7) and LoG (22) are level, within one nucleus. The filter is clearly better only in the top 100.",
      "Are fits repeatable? Our own fits: seed spread at most 0.13 dB (Step 5). Luxar, used on the next slides: three repeated fits of one frame differed by at most 2.1-3.7 percentage points of nuclei kept, depending on the detector."]);
 }
 
@@ -492,13 +495,14 @@ addSection("State of the art");
     { text: "Cellpose 3D prefers blobs; watershed and Cellpose 2D prefer JPEG2000; all prefer JPEG2000 past 300×" }],
   { x: 6.55, y: 3.1, w: 2.8, h: 1.7, fontSize: 15, color: C.text1 });
   notes(s,
-    "The result. Bars above zero mean the blobs kept more nuclei than JPEG2000 at the same file size; below zero, JPEG2000 kept more. Up to about 300 times compression the answer depends on the detector: Cellpose in 3D mode finds 3.5 points more nuclei in the blob version, the classical watershed and Cellpose in 2D mode find more in JPEG2000, and the simple blob detector LoG shows no consistent difference. Beyond 300 times, every detector prefers JPEG2000 by 17 to 23 points. Meanwhile PSNR says JPEG2000 is better on every single frame, so PSNR alone could not have told you which format a given analysis needs. The same Cellpose network changing sides between 2D and 3D mode shows the problem comes from processing slice by slice.",
+    "The result. Bars above zero mean the blobs kept more nuclei than JPEG2000 at the same file size; below zero, JPEG2000 kept more. Up to about 300 times compression the answer depends on the detector: Cellpose in 3D mode finds 3.5 points more nuclei in the blob version, the classical watershed and Cellpose in 2D mode find more in JPEG2000, and the simple blob detector LoG shows no consistent difference. Beyond 300 times, every detector prefers JPEG2000 by 17 to 23 points. Meanwhile PSNR says JPEG2000 is better on every single frame, so PSNR alone could not have told you which format a given analysis needs. The same Cellpose network changing sides between 2D and 3D mode supports an explanation involving processing geometry: slice by slice versus the whole volume. Switching modes shows that the behaviour differs; it does not isolate the exact cause.",
     ["LoG (Laplacian of Gaussian): a classic blob detector that responds to bright round spots of a given size.",
      "Watershed: a classical segmentation that separates touching bright regions, like water filling valleys.",
      "Cellpose: a widely used deep-learning model that outlines cells or nuclei. 2D mode works slice by slice and joins slices; 3D mode looks at the volume in three directions at once.",
      "Points: percentage points of nuclei kept, e.g. 0.90 vs 0.86 is 4 points.",
      "Statistics: each frame counts once; Wilcoxon signed-rank tests over the 12 frames, Holm-corrected for 8 tests. Everything except LoG below 300x is significant (Holm-corrected p ≤ 0.01). The 12 frames come from only 2 embryos, so they are not 12 independent animals."],
     ["Is LoG +1.3 real? No: 8 of 12 frames, p = 0.11; it comes from one embryo only.",
+     "Is slice-by-slice processing proven to be the cause? No. Same network, same weights, different behaviour: so the penalty is not a fixed property of the learned model. But 3D mode also changes how predictions are combined and cleaned up, so the mode switch does not isolate geometry as the cause.",
      "Why frames and not single comparisons? An earlier draft averaged all matched pairs, with bootstrap intervals per pair. Pairs from one frame are not independent, so the final analysis averages per frame first and tests across frames; the numbers here are that final analysis, the same as in the paper.",
      "Why does JPEG2000 win at high compression? Below about 3 blobs per nucleus, blob fits lose whole nuclei; wavelet compression degrades gradually."]);
 }
@@ -529,13 +533,13 @@ addSection("Conclusion");
   currentTitle = "What we learned";
   s.addText(currentTitle, { placeholder: "title" });
   s.addText([
-    { text: "Stretched blobs, one start per nucleus and a size cap made our fits find more nuclei; a simple blob filter still ranks them better.", options: { bullet: true, breakLine: true } },
+    { text: "Stretched blobs, one start per nucleus and a size cap made our fits find more nuclei; in the top 100, a simple blob filter still ranks them better.", options: { bullet: true, breakLine: true } },
     { text: "At the same file size, the better format depends on the detector and the compression: blobs help 3D Cellpose below 300×, JPEG2000 wins beyond.", options: { bullet: true, breakLine: true } },
     { text: "Viewing and measuring need separate checks: PSNR cannot choose the format.", options: { bullet: true } },
   ], { placeholder: "body", paraSpaceAfter: 12 });
   s.addImage({ path: FIG("title_tribolium.png"), x: 7.05, y: 0.35, w: 2.55, h: 4.85, objectName: "end-tribolium" });
   notes(s,
-    "Three take-aways. One: our step-by-step changes made blob fits find nuclei more reliably, but on hand-marked nuclei a simple blob filter still ranks them better. Two: compared with the state of the art at the same file size, there is no single winner. Below 300 times, the blobs help 3D Cellpose and hurt the watershed and 2D Cellpose; beyond 300 times JPEG2000 keeps more nuclei for every detector. Three: a format that looks good is not automatically good for measuring, and the usual image-quality number cannot decide this; you have to test with the analysis you plan to run.",
+    "Three take-aways. One: our step-by-step changes made blob fits find nuclei more reliably, but on hand-marked nuclei a simple blob filter still ranks them better among the top 100 detections, and as well among the top 200. Two: compared with the state of the art at the same file size, there is no single winner. Below 300 times, the blobs help 3D Cellpose and hurt the watershed and 2D Cellpose; beyond 300 times JPEG2000 keeps more nuclei for every detector. Three: a format that looks good is not automatically good for measuring, and the usual image-quality number cannot decide this; you have to test with the analysis you plan to run.",
     ["Codec: a compression method (coder-decoder)."],
     ["So was the project a failure? No: we now know where blobs should and should not be trusted, which is what a user needs; and the evaluation method itself is reusable.",
      "Are blobs useless for measuring? Not in general: with 3D Cellpose they kept more nuclei at moderate compression. But each analysis has to be checked separately."]);

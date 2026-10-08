@@ -182,8 +182,9 @@ segmenters instead see smooth blobs on a black background with streaks (Fig.~\re
 The same Cellpose network shows this cleanly. At \SIrange{45}{94}{\times}, JPEG-XL minus
 splats is \GapCP{} points of nuclei kept in 2D mode (intervals above zero on \GapCIfrac{}
 frames) but \GapCPthree{} in 3D mode, where the 5-point penalty we tested for in advance
-appeared on \RuleGapBigCPthree{} frames---the penalty belongs to slice-wise processing, not to
-the learned model. The watershed sits in between (\GapWS{} points; under the pre-set 5 points
+appeared on \RuleGapBigCPthree{} frames. The penalty is thus not a fixed property of the learned
+model, which supports an explanation involving processing geometry; switching modes also
+changes how predictions are combined, so it does not isolate the cause. The watershed sits in between (\GapWS{} points; under the pre-set 5 points
 on \RuleGapSmallWS{} frames).
 
 \textbf{The budget cliff and PSNR.} Splats lose nuclei abruptly once they become scarce

@@ -12,7 +12,8 @@ each paired with JPEG2000 at identical bytes; four detectors (LoG, 3D watershed,
 
 **History.** v1.0 (tag `study-a-v1.0`) used a broken JPEG2000 baseline; its headline (splats
 beat JPEG2000 beyond ~200x) was an artefact. A second draft blamed a "learned-model" penalty;
-Cellpose 3D mode refuted that (the penalty is from slice-wise processing).
+Cellpose 3D mode refuted that (the same weights show no penalty in 3D mode, which supports an
+explanation involving processing geometry but does not isolate the cause).
 
 | # | Claim (paper wording) | Evidence | Rule / verdict | Status |
 |---|---|---|---|---|
@@ -23,7 +24,7 @@ Cellpose 3D mode refuted that (the penalty is from slice-wise processing).
 | C5 | Budget cliff: LoG crosses 90% at 1.1–3.1 splats per nucleus on all 12 frames | a1_crossings | A1 cliff HOLDS 8/8 (+ 4 first frames) | solid |
 | C6 | PSNR misses the cliff — narrowed: PSNR flat (≤2.6 dB span) but the pre-registered test held on only 4/8 added frames (cliff below K=1000 on small frames) | a1 rule | A1 PSNR DOES NOT HOLD (4/8) | qualified, reported as failed |
 | C7 | 2D Cellpose penalty vs JPEG-XL at 45–94x | 4 first frames (1a) + 8 added | 1a REPLICATES; A1 HOLDS 8/8 | solid (for 2D-stitched) |
-| C8 | The penalty is absent in Cellpose's 3D mode → slice-wise processing, not the learned model | 3D gap ≥5 on 0/12 frames; Luxar 0–10 points better | A2 stitching: penalty absent | solid |
+| C8 | The penalty is absent in Cellpose's 3D mode → not a fixed property of the learned model; supports (does not isolate) processing geometry as the explanation | 3D gap ≥5 on 0/12 frames; Luxar 0–10 points better | A2 stitching: penalty absent | solid |
 | C9 | Watershed sits in between (gap < 5 points on 11/12) | a1 rule | A2 watershed | solid |
 | C10 | Luxar's K* = 64,000 on all 4 calibrated frames (both embryos), ~25–30x; keeps 89–105% depending on detector; JPEG2000 at the same bytes 99–102%; fitting 17–46 min (A100) | 4 frames, full-data fits | 3 SAFE (+ embryo-2 extension) | solid |
 | C11 | JPEG-XL nearly lossless to its maximum distance (82–120x; worst 91%) | 12 frames × 4 detectors | 1c QUALIFY | qualified |

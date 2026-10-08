@@ -98,7 +98,7 @@ were not adjusted afterwards. \Cref{tab:rules} lists the main rules and outcomes
     Cliff (8 added frames) & LoG keeps $\ge90\%$ only above $\le3.5$ splats per nucleus, on $\ge6$ of 8 frames & Holds on 8 of 8 \\
     PSNR misses the cliff & Luxar PSNR varies $<3$\,dB over $K$ = 1{,}000--16{,}000 while LoG nuclei kept varies $\ge0.15$, on $\ge6$ of 8 & \textbf{Fails}: 4 of 8; reported narrowed \\
     Detector dependence (2D Cellpose) & JPEG-XL keeps $\ge5$ points more than Luxar at $K$ = 16{,}000, on $\ge6$ of 8 & Holds on 8 of 8 \\
-    Stitching (3D Cellpose) & Same gap $\ge5$ points on $\ge75\%$ of frames would rule out slice-wise processing as the cause & Gap on 0 of 12: penalty is from slice-wise processing \\
+    Stitching (3D Cellpose) & Same gap $\ge5$ points on $\ge75\%$ of frames would rule out slice-wise processing as the cause & Gap on 0 of 12: same model behaves differently in 3D mode \\
     Learned vs classical (watershed) & Gap $<5$ points on $\ge75\%$ of frames & 11 of 12 \\
     Luxar's own budget $K^\ast$ & Keeps $\ge95\%$ of nuclei under LoG & Holds on all calibrated frames \\
     Splats vs JPEG2000 at matched bytes & Splats may be called better only where the paired interval lies above zero & Reported per detector and regime (\cref{tab:main}) \\
@@ -128,6 +128,9 @@ Code, rules and results are in the project repository,\\
   \item Luxar fits ran on the TU Dresden ZIH clusters (A100 and H100 GPUs); codecs and detectors
     on a laptop CPU, Cellpose 3D on the cluster.
   \item Earlier fitting results carry \texttt{git\_dirty=True}: the recorded commit alone does not
-    reconstruct their code. Loss-weighting and some trajectory results could not be rescored
-    after the matcher fix and are not used here.
+    reconstruct their code. Two analyses could not be rescored after the matcher fix because
+    their outputs were not saved: the loss-weighting experiment (not used here) and the
+    end-of-fit width comparison behind Step~8 (\path{scripts/stage3_trajectory.py}), which
+    is reported with that caveat. Where rescoring was possible, the fix moved counts by at most
+    one nucleus.
 \end{itemize}

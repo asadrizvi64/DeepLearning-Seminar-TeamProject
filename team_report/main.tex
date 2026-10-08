@@ -73,12 +73,12 @@ compact and renders quickly; such representations are judged almost only by PSNR
 project asked two questions. Can a Gaussian fit be made to keep the cell nuclei that
 biologists measure? And does the state-of-the-art Gaussian compressor keep them as well as a
 standard codec at the same file size? Starting from a synthetic phantom with a known answer,
-we changed one thing at a time on real \emph{Tribolium} data: where blobs start, their shape,
+we tested changes one at a time on real \emph{Tribolium} data: where blobs start, their shape,
 densification, a budget derived from the cell count, the position learning rate, and a size
 cap for nucleus blobs. Starting one blob on every detected nucleus raised the share of nuclei
 found after fitting from 52\% to 71\%, and the cap recovered 6 of 31 faint nuclei at no
-measurable PSNR cost; on 29 hand-labelled \emph{Drosophila} nuclei, however, a classical blob filter ranked
-nuclei better than any fit. At identical bytes on 12 \emph{C.~elegans} frames with
+measurable PSNR cost; on 29 hand-labelled \emph{Drosophila} nuclei, however, a classical blob
+filter put more of them into the top 100 detections than any fit. At identical bytes on 12 \emph{C.~elegans} frames with
 \NlabTotal{} labelled nuclei, JPEG2000 had higher PSNR than the Luxar Gaussian compressor on
 every frame, yet the number of nuclei found depended on the detector: below
 \SI{300}{\times} compression, 3D Cellpose found \FrModCPthree{} percentage points more nuclei
@@ -127,7 +127,7 @@ The project addressed two concrete questions:
 \end{enumerate}
 \Cref{tab:summary} summarises the answers. In short, our fitting changes made Gaussian fits
 keep nuclei much more reliably than the naive setup, but a classical blob filter applied to the
-raw image still ranks nuclei better; and at matched file size the state-of-the-art splats are
+raw image ranks nuclei better in the top 100 and as well in the top 200; and at matched file size the state-of-the-art splats are
 neither uniformly better nor uniformly worse than JPEG2000: the winner depends on the detector,
 which PSNR cannot reveal.
 
@@ -141,7 +141,7 @@ which PSNR cannot reveal.
       & Yes: start one blob per nucleus, cap the size of nucleus blobs
       & nuclei found 52\% $\to$ 71\%; faint nuclei 13 $\to$ 19 of 31; PSNR unchanged \\
     Is the fit better than the raw image for finding labelled nuclei? (\emph{Drosophila}, 29 labels)
-      & Better than brightness ranking, worse than a blob filter
+      & Better than brightness ranking; worse than a blob filter in the top 100, level in the top 200
       & top-100 hits: fit 14, raw brightness 10, LoG filter 16--18 \\
     Do state-of-the-art splats keep more nuclei than JPEG2000 at the same bytes? (\emph{C.~elegans}, 12 frames)
       & Depends on the detector below \SI{300}{\times}; never beyond
@@ -332,8 +332,9 @@ every evaluation bug we found.
 % =====================================================================
 
 We started from the simplest setup that can be checked exactly, a synthetic phantom, and then
-changed one thing at a time on real data. For each change we state what was changed, why it
-was expected to help, and what it did. Steps~1--4 are Akim's experiments, Steps~5--8 ours.
+tested one change at a time on real data, each in its own comparison under the settings stated
+there. For each change we state what was changed, why it was expected to help, and what it
+did. Steps~1--4 are Akim's experiments, Steps~5--8 ours.
 
 \subsection{Step 0: a phantom with a known answer}
 
@@ -441,7 +442,9 @@ multiples of it. \textbf{Why.} If every cell gets a blob, the blobs should match
 steadily with the budget, from F1 0.35 at 301 blobs to 0.76 at 1{,}804 (\cref{fig:cellbudget}).
 PSNR, however, peaked near 900 blobs and then fell, because every run stopped after 3{,}000
 iterations. This was the first sign that image quality and finding cells do not always agree.
-The reference cells here come from a detector, not from people.
+The F1 gain comes with a sixfold larger budget: it shows that more blobs match more cells, not
+that deriving the budget from the cell count is better than another way of choosing it, which
+was not compared. The reference cells here come from a detector, not from people.
 
 \subsection{Step 5 (ours): repeats confirm that stretching is real}
 
@@ -502,9 +505,12 @@ much in Steps~1 and~6. Good starts with the default step remained best.
 
 \textbf{Change.} An upper limit of 10 voxels on the scale of the blobs that started on nuclei
 (\SI{6.9}{\micro\meter} in $xy$ but \SI{30}{\micro\meter} in $z$, so in effect a cap in $xy$). \textbf{Why.} The nuclei still
-lost were the faint ones. Following their blobs through fitting showed that they did not fade:
-their final amplitude matched that of kept nuclei ($p=0.63$), but they widened, to 11.7 against
-9.1 voxels ($p=0.001$), until no detectable peak remained. \textbf{Result.} Faint nuclei found
+lost were the faint ones. At the end of fitting, the blob nearest to each lost nucleus was not
+dimmer than for kept nuclei (amplitude $p=0.63$) but wider (scale 11.7 against 9.1 voxels,
+$p=0.001$), and a wide blob leaves only a flat peak for a detector to find. A cap on width
+should therefore help. This is an association at the end of fitting, not a tracked trajectory
+of individual blobs, and it was scored before the matcher fix (\cref{app:bugs}) and could not
+be rescored. \textbf{Result.} Faint nuclei found
 rose from 13 to 19 of 31 and overall recall from 0.730 to 0.800, while global PSNR changed by
 \SI{-0.012}{dB} (\cref{tab:cap,fig:cap}). The result rests on one seed and four regions, one
 region got worse, and on human-labelled \emph{Drosophila} the cap changed nothing because it
@@ -544,15 +550,18 @@ amplitude; the remaining 87\% of blobs model a near-constant background. Under s
 missed faint nucleus costs far less than a small error spread over the background, so the
 objective rationally spends capacity there. A learnable background term did not help, because
 with 250 broad blobs the split between the term and the blobs is not identifiable. Second, the
-evidence supports broadening as a contributor to losing faint nuclei under this fitting regime
-(Step~8). We do not claim a proven causal chain: the comparison uses the blob nearest to each
-nucleus at the end of fitting, not tracked blob identities.
+blobs associated with lost faint nuclei at the end of fitting were wider than those of kept
+nuclei, and capping their width improved retention (Step~8). This supports broadening as a
+contributor to losing faint nuclei under this fitting regime. We do not claim a proven causal
+chain: the comparison uses the blob nearest to each nucleus at the end of fitting, not blobs
+tracked through fitting.
 
 \subsection{From the simple setup to the final recipe}
 
-\Cref{tab:recipe} lists all eight changes, each against the version just before it. They were
-measured one at a time, on different data and with different numbers of repeats, so they
-cannot be added up into one overall improvement. The final recipe is: stretched and rotated
+\Cref{tab:recipe} lists all eight changes. They are separate comparisons under the settings
+stated in each step, not a chain in which each row builds on the one before. They used
+different data, budgets and numbers of repeats, so they cannot be added up into one overall
+improvement, and row~4 compares budgets, not ways of choosing a budget. The final recipe is: stretched and rotated
 blobs, one starting blob per detected nucleus, the default position learning rate with these
 good starts, and a size cap for nucleus blobs. A combination of a larger learning rate with the
 cap was never run and is not part of the recipe.
@@ -566,7 +575,7 @@ cap was never run and is not part of the recipe.
     1 & Start on bright peaks & Akim & PSNR, phantom (best of 8) & 32.0\,dB & 53.1\,dB \\
     2 & Stretched + rotated blobs & Akim & PSNR, real data, median & 20.4\,dB & 24.0\,dB \\
     3 & Grow blobs during fitting & Akim & PSNR, 34 grown vs 50 fixed & 23.8\,dB & 24.3\,dB \\
-    4 & Budget from cell count & Akim & cell-matching F1, 301 $\to$ 1{,}804 blobs & 0.35 & 0.76 \\
+    4 & Budget in cell-count units & Akim & cell-matching F1, 301 $\to$ 1{,}804 blobs & 0.35 & 0.76 \\
     5 & Repeat of the shape test & ours & PSNR, 15 fits per shape & 22.3\,dB & 25.5\,dB \\
     6 & One start per nucleus & ours & nuclei found, of 110 & 52\% & 71\% \\
     7 & Larger position steps & ours & F1, random starts & 0.64 & 0.78 \\
@@ -574,7 +583,9 @@ cap was never run and is not part of the recipe.
     \bottomrule
   \end{tabular}
   \caption{The eight changes from the naive setup (round blobs, random starts, default steps,
-  no cap). Each is compared with the version before it; the rows are not cumulative.}
+  no cap): separate comparisons under the settings stated in each step. The rows are not
+  cumulative. Row~4 shows F1 as the budget grows sixfold; it does not compare the cell-count rule
+  with another way of choosing the budget.}
   \label{tab:recipe}
 \end{table}
 
@@ -591,8 +602,9 @@ nuclei in one $64\times128\times128$ crop. All fits started from the same 457 de
 candidates of the raw volume, so only the fitting differed, and methods were compared at the
 same number of detections (\cref{tab:human,fig:human}). Fitting ranked true nuclei above image
 brightness in every seed (14 against 10 of 29 in the top 100). But a scale-normalised LoG filter
-applied to the same raw candidates did better (16--18) in seconds, and the raw detector using
-all 457 candidates found 26 of 29, more than any fit. The fit's advantage over brightness is
+applied to the same raw candidates did better in the top 100 (16--18), in seconds; in the top
+200 the best fit and the filter were level (22.7 against 22, within one nucleus). The raw
+detector using all 457 candidates found 26 of 29, more than any fit. The fit's advantage over brightness is
 explained by blob-shaped scoring, not by anything specific to the Gaussian representation. A
 large position learning rate hurt good starts here too, as \cref{tab:lr} predicts, and the
 best-PSNR fit found fewer nuclei in the top 100 than the default fit: image quality and object
@@ -626,7 +638,9 @@ real only if it is about three nuclei or more and has the same sign in every see
   \centering
   \includegraphics[width=\linewidth]{figs/drosophila_human_label_check.png}
   \caption{Human-labelled nuclei found in the top 100 and top 200 detections per method (bars:
-  mean; dots: seeds). The LoG baseline of \cref{tab:human} is not drawn; it exceeds every fit.}
+  mean; dots: seeds). The LoG baseline of \cref{tab:human} is not drawn: it exceeds every fit
+  in the top 100 (16--18), and in the top 200 (22) it is level with the uniform-sampling fit
+  (22.7).}
   \label{fig:human}
 \end{figure}
 
@@ -754,8 +768,11 @@ over a volume: under LoG and 3D Cellpose, nuclei kept often exceeded 100\% (Luxa
 segmenters instead see smooth blobs on a black background with streaks (\cref{fig:qual}). The
 same Cellpose network shows this cleanly. At \SIrange{45}{94}{\times}, JPEG-XL minus splats was
 \GapCP{} points of nuclei kept in 2D mode but \GapCPthree{} in 3D mode, where the 5-point
-penalty we had tested for in advance appeared on \RuleGapBigCPthree{} frames. The penalty
-belongs to slice-wise processing, not to the learned model. The watershed sits in between
+penalty we had tested for in advance appeared on \RuleGapBigCPthree{} frames. The same weights
+behave differently, so the penalty is not a fixed property of the learned model; this supports
+an explanation involving processing geometry (slices versus the whole volume). The 3D mode also
+combines and post-processes predictions differently, so switching modes establishes the
+difference in behaviour but does not isolate its exact cause. The watershed sits in between
 (\GapWS{} points; under the pre-set 5 points on \RuleGapSmallWS{} frames).
 
 \paragraph{The budget cliff.} Splats lose nuclei abruptly once they become scarce
@@ -805,8 +822,8 @@ larger early nuclei, LoG favoured splats more strongly (\EarlyAdvPts{} points at
 $\to$ 71\% of nuclei found by seeding one blob per nucleus, 13 $\to$ 19 of 31 faint nuclei with
 a size cap, and the diagnosis that the position optimiser was under-scaled rather than stuck.
 Against human labels, however, the fitted representation ranked nuclei better than raw
-brightness but worse than a classical blob filter, and every other use we tested lost to a
-simple baseline. On the storage side, we showed with 12 frames and four detectors that at the
+brightness but, in the top 100, worse than a classical blob filter (level in the top 200), and
+every other use we tested lost to a simple baseline. On the storage side, we showed with 12 frames and four detectors that at the
 same bytes, state-of-the-art Gaussian compression is neither safer nor less safe than JPEG2000
 in general: 3D Cellpose kept \FrModCPthree{} points more nuclei in splats below
 \SI{300}{\times}, 2D Cellpose \FrModCP{} points fewer, and every detector lost 17--23 points
@@ -849,7 +866,7 @@ Cell Tracking Challenge measures~\cite{maska2023cell}, rather than by PSNR.
 Gaussian blobs can represent light-sheet volumes compactly, and careful fitting (stretched
 blobs, one start per nucleus, a size cap) makes them keep most nuclei. Measured against human
 labels and at identical bytes, however, they do not beat simple alternatives: a blob filter
-ranks nuclei better, and against JPEG2000 the state-of-the-art Gaussian compressor gains or loses
+ranks nuclei at least as well, and against JPEG2000 the state-of-the-art Gaussian compressor gains or loses
 nuclei depending on the detector, even between the 2D and 3D modes of one network, and loses
 them abruptly below about three splats per nucleus, a budget that PSNR cannot identify. The
 reusable outcome of the project is the evaluation itself: compare at matched bytes against a
