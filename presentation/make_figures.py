@@ -159,3 +159,55 @@ fig, ax = plt.subplots(figsize=(4, 7.6), facecolor='black')
 ax.imshow(norm(np.asarray(trib).max(0).astype(np.float32)), cmap='gray')
 ax.set_axis_off()
 save(fig, 'title_tribolium.png')
+
+# ---- 6. Akim's densification vs fixed budgets (same 64x128x128 Tribolium crop, full anisotropic)
+import glob, json, os
+R2 = REPO / 'runs 2' / 'runs'
+grown = []
+for f in sorted(glob.glob(str(R2 / 'densify_lund*' / 'summary.csv'))):
+    d = pd.read_csv(f)
+    d = d[d.variant == 'full_anisotropic']
+    grown += list(zip(d.final_gaussians, d.psnr_db))
+allr = pd.read_csv(REPO / 'runs' / 'colleague_all_runs.csv')
+fixed = allr[(allr.experiment == 'ablation_lund_roi_64_128_128_(50-100)_PeakLocMax_3kiter') & (allr.variant == 'full_anisotropic')]
+fig, ax = plt.subplots(figsize=(7.5, 4.6))
+ax.plot(fixed.budget, fixed.psnr, 's-', color='#6B7280', ms=10, lw=2, label='fixed number of blobs')
+gx, gy = zip(*grown)
+ax.plot(gx, gy, 'o', color='#2A78D6', ms=10, label='grown during fitting')
+ax.set_xscale('log')
+ax.set_xticks([30, 50, 100, 170]); ax.set_xticklabels(['30', '50', '100', '170'])
+ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+ax.set_xlabel('number of blobs at the end', fontsize=20)
+ax.set_ylabel('PSNR (dB)', fontsize=20)
+ax.tick_params(labelsize=17)
+for sp in ('top', 'right'):
+    ax.spines[sp].set_visible(False)
+ax.legend(frameon=False, fontsize=17, loc='lower right')
+save(fig, 'akim_densify.png')
+
+# ---- 7. Akim's cell-count budget: cell matching F1 and PSNR vs number of blobs (full volume)
+cb = R2 / 'ablation_lund_roi_full_AdaptiveCellBudget_gpc115'
+cells = []
+for f in sorted(glob.glob(str(cb / '*' / 'N_*' / 'cell_count_matching.json'))):
+    v, n = Path(f).parts[-3], int(Path(f).parts[-2][2:])
+    cells.append((v, n, json.load(open(f))['f1']))
+cells = pd.DataFrame(cells, columns=['variant', 'budget', 'f1'])
+ps = allr[allr.experiment == 'ablation_lund_roi_full_AdaptiveCellBudget_gpc115'][['variant', 'budget', 'psnr']]
+fig, axes = plt.subplots(1, 2, figsize=(9.5, 5.6))
+for v, col, lab in (('axis_aligned_anisotropic', '#2A78D6', 'stretched'), ('full_anisotropic', '#E8730C', 'stretched + rotated')):
+    a = cells[cells.variant == v].sort_values('budget')
+    axes[0].plot(a.budget, a.f1, 'o-', color=col, lw=2.2, ms=8, label=lab)
+    b = ps[ps.variant == v].sort_values('budget')
+    axes[1].plot(b.budget, b.psnr, 'o-', color=col, lw=2.2, ms=8, label=lab)
+for ax, yl in zip(axes, ('cell matching F1', 'PSNR (dB)')):
+    ax.set_xscale('log')
+    ax.set_xticks([300, 600, 1800]); ax.set_xticklabels(['300', '600', '1800'])
+    ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+    ax.set_xlabel('number of blobs', fontsize=21)
+    ax.set_ylabel(yl, fontsize=21)
+    ax.tick_params(labelsize=18)
+    for sp in ('top', 'right'):
+        ax.spines[sp].set_visible(False)
+axes[0].legend(frameon=False, fontsize=17, loc='lower right')
+fig.tight_layout(w_pad=2.5)
+save(fig, 'akim_cellbudget.png')

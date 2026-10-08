@@ -228,8 +228,8 @@ addSection("Simple setup and changes");
      "Bright peak (local maximum): a voxel brighter than all its neighbours; a quick guess for where a blob belongs.",
      "Fitting steps (iterations): how many times all blob numbers are adjusted.",
      "Best of 8 fits: each setting was run with four blob shapes and two budgets (50 and 100 blobs); the bar shows the best one."],
-    ["Why does a random start fail? Later we found the reason: blobs barely move during fitting with the default step size (Step 5).",
-     "Who did what? Steps 1 and 2 are Akim's experiments; Steps 0 and 3-6 are ours; the comparison with the state of the art is ours."]);
+    ["Why does a random start fail? Later we found the reason: blobs barely move during fitting with the default step size (Step 7).",
+     "Who did what? Steps 1-4 are Akim's experiments; Steps 0 and 5-8 are ours; the comparison with the state of the art is ours."]);
 }
 
 // ================================================================ 6b. Akim: real-data sweep
@@ -258,9 +258,49 @@ addSection("Simple setup and changes");
      "Why median, not best? One run per setting can be lucky; the median over ~75 fits is more robust. Our next step re-tested this with repeated seeds."]);
 }
 
-// ================================================================ 6. step 3 shape re-test
+// ================================================================ 6c. Akim: densification
 {
-  const s = content("Simple setup and changes", "Step 3 · Repeats confirm: stretching is real");
+  const s = content("Simple setup and changes", "Step 3 · Grow blobs where the error is large");
+  s.addImage({ path: FIG("akim_densify.png"), x: 0.5, y: 1.2, w: 5.3, h: 3.25, objectName: "akim-densify" });
+  txt(s, "Akim's runs, same Tribolium crop, stretched + rotated blobs", { x: 0.5, y: 4.55, w: 5.3, h: 0.3, fontSize: 11, color: C.accent5 });
+  steps(s, [
+    ["WHAT AKIM CHANGED", "Start with 25 blobs; add new ones where the error stays high (12 variants)"],
+    ["WHY", "Let the data decide how many blobs it needs, instead of guessing"],
+    ["RESULT", "Slightly better per blob (34 grown: 24.3 dB vs 50 fixed: 23.8 dB); best 24.9 vs 24.5 dB"],
+  ]);
+  notes(s,
+    "Akim also tried letting the number of blobs grow during fitting. He starts with 25 blobs and, where the error stays high, splits or copies blobs, a standard trick from 3D Gaussian splatting called densification. He tried 12 variants: when to add blobs, whether new blobs inherit their parent's settings, how many voxels to sample. On the same crop, grown fits reached slightly better quality for the same number of blobs, for example 24.3 dB with 34 grown blobs against 23.8 dB with 50 fixed blobs. But the best values are close, 24.9 against 24.5 dB, so it is a modest gain, not a breakthrough, and we kept a fixed budget afterwards because it is simpler to control.",
+    ["Densification: adding blobs during fitting by splitting or cloning existing ones where the reconstruction error is large.",
+     "Plateau trigger: only add blobs once the error stops improving.",
+     "Inherit: a new blob starts with its parent's size and brightness instead of default values.",
+     "Fixed budget: the number of blobs is set before fitting and never changes."],
+    ["Why not use densification then? The gain was within about half a dB, the final number of blobs is harder to predict, and fixed budgets made the later comparisons cleaner.",
+     "Does more fitting time explain it? Partly: the best grown fit used 5,000 steps; the fixed budgets used 3,000."]);
+}
+
+// ================================================================ 6d. Akim: cell-count budget
+{
+  const s = content("Simple setup and changes", "Step 4 · Set the budget from the cell count");
+  s.addImage({ path: FIG("akim_cellbudget.png"), x: 0.5, y: 1.2, w: 5.3, h: 3.12, objectName: "akim-cellbudget" });
+  txt(s, "Akim's runs, whole Tribolium volume, 230 cells found by a detector", { x: 0.5, y: 4.4, w: 5.3, h: 0.3, fontSize: 11, color: C.accent5 });
+  steps(s, [
+    ["WHAT AKIM CHANGED", "Count cells first (230), then use ~1.15 blobs per cell + 12% for background (301), and multiples"],
+    ["WHY", "If each cell gets a blob, the blobs should match the cells"],
+    ["RESULT", "Cell matching F1 0.35 → 0.76 with more blobs, while PSNR falls past ~900 blobs"],
+  ]);
+  notes(s,
+    "Akim's last idea: instead of guessing the number of blobs, count the cells first. A detector found about 230 cells in the whole volume; he then used 1.15 blobs per cell plus 12 percent for the background, which gives 301 blobs, and multiples of that. He then checked how well peaks in the blob reconstruction match the detected cells. Matching improves steadily with more blobs, from F1 0.35 at 301 blobs to 0.76 at 1,804. But look at the right panel: image quality peaks around 900 blobs and then drops. The reason is that all runs stopped after 3,000 steps, which is not enough for a large number of blobs. This was the first sign that image quality and finding cells do not always agree.",
+    ["Cell count: the number of cells, here estimated by a detector from the data, not counted by a person.",
+     "Cell matching F1: how well peaks in the reconstruction match the detected cells; 1.0 is perfect.",
+     "Support blobs (background): the extra blobs not tied to a cell, for the dimmer tissue between nuclei.",
+     "Under-trained: the fit stopped before it had finished improving."],
+    ["Are the 230 cells ground truth? No, they come from a detector with fixed settings; the hand-marked checks come later (validation slide and the state-of-the-art test).",
+     "Why does PSNR fall with more blobs? The number of fitting steps was fixed at 3,000; more blobs need more steps. We later saw the same confound in our own experiments."]);
+}
+
+// ================================================================ 6. step 5 shape re-test
+{
+  const s = content("Simple setup and changes", "Step 5 · Repeats confirm: stretching is real");
   s.addChart(pres.charts.BAR, [{ name: "PSNR (dB)", labels: ["round", "stretched", "stretched + rotated"], values: [22.31, 25.21, 25.51] }],
     Object.assign({}, chartText, { x: 0.5, y: 1.15, w: 5.2, h: 3.55, barDir: "col", chartColors: [HEX.accent2],
       showValue: true, dataLabelPosition: "outEnd", dataLabelFormatCode: "0.0", valAxisMinVal: 20, valAxisMaxVal: 26,
@@ -283,7 +323,7 @@ addSection("Simple setup and changes");
 
 // ================================================================ 7. step 2 seeding
 {
-  const s = content("Simple setup and changes", "Step 4 · Start each blob on a nucleus");
+  const s = content("Simple setup and changes", "Step 6 · Start each blob on a nucleus");
   s.addChart(pres.charts.BAR, [
     { name: "Brightest-peak start", labels: ["blob at a nucleus at start", "nuclei found after fitting"], values: [73, 52] },
     { name: "One start per nucleus", labels: ["blob at a nucleus at start", "nuclei found after fitting"], values: [100, 71] }],
@@ -307,7 +347,7 @@ addSection("Simple setup and changes");
 
 // ================================================================ 8. step 3 learning rate
 {
-  const s = content("Simple setup and changes", "Step 5 · Bigger steps let blobs travel");
+  const s = content("Simple setup and changes", "Step 7 · Bigger steps let blobs travel");
   s.addChart(pres.charts.LINE, [{ name: "blobs that moved to another nucleus", labels: ["1×", "3×", "10×", "31×", "62×"], values: [1.0, 5.5, 14.5, 28.0, 32.0] }],
     Object.assign({}, chartText, { x: 0.5, y: 1.15, w: 5.2, h: 3.55, chartColors: [HEX.accent2], lineSize: 3, lineDataSymbolSize: 9,
       showValue: true, dataLabelPosition: "t", dataLabelFormatCode: "0\"%\"", valAxisMinVal: 0, valAxisMaxVal: 40,
@@ -324,12 +364,12 @@ addSection("Simple setup and changes");
     ["Learning rate / step size: how far each fitting step moves the numbers. Too small: blobs barely move. Too large: they overshoot.",
      "F1: one number combining 'how many real nuclei were found' and 'how many detections were real'; 1.0 is perfect.",
      "Moved to another nucleus (migration): the nearest nucleus of a blob changed between start and end."],
-    ["Does that undo Steps 1 and 4? It reframes them: starting points mattered so much because blobs could not move. With a suitable step size, a random start reaches the same F1."]);
+    ["Does that undo Steps 1 and 6? It reframes them: starting points mattered so much because blobs could not move. With a suitable step size, a random start reaches the same F1."]);
 }
 
 // ================================================================ 9. step 4 size cap
 {
-  const s = content("Simple setup and changes", "Step 6 · Faint nuclei: cap the blob size");
+  const s = content("Simple setup and changes", "Step 8 · Faint nuclei: cap the blob size");
   s.addImage({ path: FIG("size_cap.png"), x: 0.5, y: 1.2, w: 5.2, h: 2.6, objectName: "size-cap" });
   txt(s, "Green: nucleus found  ·  red: missed", { x: 0.5, y: 3.9, w: 5.2, h: 0.3, fontSize: 11, color: C.accent5 });
   steps(s, [
@@ -353,17 +393,19 @@ addSection("Results and validation");
   const body = [
     ["Start on bright peaks", "Akim", "PSNR, phantom", "32.0 dB", "53.1 dB"],
     ["Stretched + rotated blobs", "Akim", "PSNR, real data, median", "20.4 dB", "24.0 dB"],
+    ["Grow blobs during fitting", "Akim", "PSNR, ~35-50 blobs", "23.8 dB", "24.3 dB"],
+    ["Blobs set from cell count", "Akim", "cell matching F1", "0.35", "0.76"],
     ["Repeats of the shape test", "us", "PSNR, 15 fits", "22.3 dB", "25.5 dB"],
     ["One start per nucleus", "us", "nuclei found, of 110", "52%", "71%"],
     ["Bigger position steps", "us", "F1, random starts", "0.64", "0.78"],
     ["Size cap", "us", "faint nuclei found, of 31", "13", "19"],
   ].map((r) => r.map((t, j) => ({ text: t, options: { bold: j === 4, color: j === 4 ? HEX.accent1 : HEX.dk1, align: j >= 3 ? "center" : "left" } })));
-  s.addTable([head].concat(body), { x: 0.5, y: 1.15, w: 9.0, colW: [2.75, 0.75, 2.6, 1.45, 1.45], fontSize: 15, fontFace: "Calibri",
-    rowH: 0.43, border: { type: "solid", pt: 0.5, color: "E5E7EB" }, fill: { color: HEX.lt1 } });
+  s.addTable([head].concat(body), { x: 0.5, y: 1.15, w: 9.0, colW: [2.75, 0.75, 2.6, 1.45, 1.45], fontSize: 14, fontFace: "Calibri",
+    rowH: 0.36, border: { type: "solid", pt: 0.5, color: "E5E7EB" }, fill: { color: HEX.lt1 } });
   txt(s, "Each change measured on its own, against the version before it; the numbers are not added together.",
-    { x: 0.5, y: 4.35, w: 9.0, h: 0.45, fontSize: 15, color: C.text2 });
+    { x: 0.5, y: 4.62, w: 9.0, h: 0.4, fontSize: 14, color: C.text2 });
   notes(s,
-    "Here are all six changes side by side, two by Akim and four by us, each compared with the version just before it. I want to be clear that these were measured one at a time, on different data and with different numbers of repeats, so you cannot add them up into one overall improvement. Together they turn a fit that merely looks right into one where the nuclei are found much more reliably.",
+    "Here are all eight changes side by side, four by Akim and four by us, each compared with the version just before it. I want to be clear that these were measured one at a time, on different data and with different numbers of repeats, so you cannot add them up into one overall improvement. Together they turn a fit that merely looks right into one where the nuclei are found much more reliably.",
     ["Naive / simple setup: round blobs with random starting positions, default step size, no cap."],
     ["Why not one combined number? Each experiment used a different number of regions, seeds and references; combining them would hide that."]);
 }
