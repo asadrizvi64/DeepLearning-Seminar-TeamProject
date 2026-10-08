@@ -58,8 +58,8 @@
 \subject{Team Project Report}
 \title{Gaussian Blobs for 3D Fluorescence Microscopy}
 \subtitle{Fitting light-sheet volumes with 3D Gaussians,\\and testing whether the nuclei survive}
-% TODO: fill in Akim's surname and both matriculation numbers (\todo cannot be used here)
-\author{Syed Muhammad Asad ([Matr.-Nr.])\and Akim [surname] ([Matr.-Nr.])}
+% TODO: Akim's matriculation number (\todo cannot be used here)
+\author{Syed Muhammad Asad (5301662)\and Akim Al-Makhdar ([Matr.-Nr.])}
 \date{Supervisor: Prof.\ Dr.\ Martin Weigert\\[0.5ex]\today}
 
 \begin{document}
@@ -148,7 +148,7 @@ which PSNR cannot reveal.
       & 3D Cellpose \FrModCPthree, watershed \FrModWS, 2D Cellpose \FrModCP{} points; beyond
         \SI{300}{\times} \FrFarLoG{} to \FrFarCP{} points \\
     Does PSNR predict this? & No: it prefers JPEG2000 everywhere & JPEG2000 higher on 12/12 frames and 80/80 pairs \\
-    Where do splats break? & Below about three splats per nucleus & LoG keeps $<90\%$ at \CrossRange{} splats per nucleus, on 12/12 frames \\
+    Where do splats break? (\emph{C.~elegans}, LoG) & Below about three splats per nucleus & nuclei kept crosses 90\% at \CrossRange{} splats per nucleus, on 12/12 frames \\
     \bottomrule
   \end{tabularx}
   \caption{Summary of outcomes. ``Points'' are percentage points of \emph{nuclei kept} (nuclei
@@ -159,7 +159,7 @@ which PSNR cannot reveal.
 
 \subsection{Division of work}
 
-The project was carried out by two students. \textbf{Akim} built the first fitting pipeline
+The project was carried out by two students. \textbf{Akim Al-Makhdar} built the first fitting pipeline
 and ran the exploratory experiment archive (399 fits in 57 experiments): the phantom
 experiments on starting positions, the sweep over blob shapes and budgets on real data,
 densification, and the cell-count budget (Steps~1--4 in \cref{sec:steps}). \textbf{Syed
@@ -322,7 +322,9 @@ each learned from a bug (\cref{app:bugs}):
 \end{itemize}
 We report \emph{recall} (share of reference nuclei found), \emph{F1} (harmonic mean of recall
 and precision) and, for compression, \emph{nuclei kept}: nuclei found after compression divided
-by nuclei found in the raw volume by the same detector. A suite of 24 regression tests pins
+by nuclei found in the raw volume by the same detector. A value of 1 means that the same number
+of labelled nuclei was found, not necessarily the same individual nuclei. A suite of 24
+regression tests pins
 every evaluation bug we found.
 
 % =====================================================================
@@ -446,7 +448,9 @@ The reference cells here come from a detector, not from people.
 \textbf{Change.} We re-ran round, stretched, and stretched-and-rotated blobs with 5 random seeds
 and 3 budgets each. \textbf{Why.} Akim's archive had one run per setting, and a single run can be
 luck. \textbf{Result.} Stretching held up: \SI{22.3}{dB} (round), \SI{25.2}{dB} (stretched),
-\SI{25.5}{dB} (stretched and rotated), with small spread between repeats (\cref{tab:shapes}).
+\SI{25.5}{dB} (stretched and rotated), averaged over budgets of 50, 100 and 250 blobs
+(\cref{tab:shapes}). The ordering held at every budget, and the standard deviation over seeds
+was 0.02--\SI{0.13}{dB} within each shape and budget, far below the \SI{3}{dB} effect.
 Most of the gain comes from stretching; rotation adds about \SI{0.3}{dB}. Nucleus F1 against
 detector-derived references rose from 0.745 to 0.805 (paired test over 5 seeds, $p=0.006$). The
 learned blobs were also about as stretched as the real nuclei: depth-to-width ratio 0.79 against
@@ -823,8 +827,10 @@ symptoms of that. Much of the effort went into finding and fixing our own evalua
 
 \paragraph{Feedback from the supervisor and next steps.} Our supervisor pointed out that
 biologists store raw data losslessly and that lossy image codecs such as JPEG are rarely used
-in practice; Gaussian splats are attractive for viewing rather than for measurement. A useful
-next step is therefore compression that biologists would accept. On one \emph{C.~elegans}
+in practice. Our results agree that viewing and measuring need separate validation: splats
+can look convincing and still lose nuclei for one detector while gaining them for another. The
+project therefore turns, by agreement with the supervisor, from Gaussian representations
+towards compression that biologists would accept. On one \emph{C.~elegans}
 frame (embryo~1, t150; 8-bit, \SI{12.7}{MB}) standard
 lossless coders reached $1.9$--$4.2\times$: JPEG-XL lossless per slice $4.2\times$, JPEG-LS
 $2.9\times$, JPEG2000 lossless $2.7\times$, Zstandard $2.5\times$. Three directions follow:

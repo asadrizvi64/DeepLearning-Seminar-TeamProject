@@ -102,7 +102,7 @@ const notes = (s, say, terms, asked) => {
 
 const chartText = { catAxisLabelFontFace: "+mn-lt", valAxisLabelFontFace: "+mn-lt", dataLabelFontFace: "+mn-lt",
   legendFontFace: "+mn-lt", titleFontFace: "+mn-lt", catAxisLabelColor: HEX.dk2, valAxisLabelColor: HEX.dk2,
-  catAxisLabelFontSize: 12, valAxisLabelFontSize: 11, dataLabelFontSize: 12, dataLabelColor: HEX.dk1,
+  catAxisLabelFontSize: 13, valAxisLabelFontSize: 12, dataLabelFontSize: 13, dataLabelColor: HEX.dk1,
   valGridLine: { color: "E5E7EB", size: 0.5 }, catGridLine: { style: "none" } };
 
 // ================================================================ 1. title
@@ -113,7 +113,7 @@ addSection("Problem and data");
   currentTitle = "Can 3D Gaussian blobs replace microscopy volumes?";
   s.addText(currentTitle, { placeholder: "title" });
   s.addText([
-    { text: "Syed Muhammad Asad, Akim", options: { breakLine: true } },
+    { text: "Syed Muhammad Asad, Akim Al-Makhdar", options: { breakLine: true } },
     { text: "MLCV seminar team project, TU Dresden", options: { breakLine: true } },
     { text: "Supervisor: Prof. Martin Weigert" },
   ], { placeholder: "body" });
@@ -196,16 +196,16 @@ addSection("Simple setup and changes");
   steps(s, [
     ["SETUP", "Fit round blobs to a volume that is itself made of blobs; compare at every voxel"],
     ["WHY", "If the code is right, it must recover a known answer"],
-    ["RESULT", "47.9 dB, almost perfect. The usual splatting renderer scored −7.1 dB"],
+    ["RESULT", "Same fit, 15-blob phantom: 31.7 dB at voxels, −7.1 dB via the splatting renderer. Final fit: 47.9 dB"],
   ]);
   notes(s,
-    "Before touching real data we built the simplest possible test: a synthetic volume made of blobs, so we know the right answer. We fit blobs to it by comparing the blob sum with the volume at every voxel. It recovers the phantom almost perfectly, 47.9 dB. We also learned something here: the standard 3D Gaussian splatting renderer, designed for photographs of solid objects, treats blobs as blocking the ones behind them. Our volumes are transparent and glowing, so that rule is wrong; scored that way the same kind of fit collapsed to minus 7 dB. So from here on we compare blobs to voxels directly.",
+    "Before touching real data we built the simplest possible test: a synthetic volume made of blobs, so we know the right answer. We fit blobs to it by comparing the blob sum with the volume at every voxel. We also learned something here: the standard 3D Gaussian splatting renderer, designed for photographs of solid objects, treats blobs as blocking the ones behind them. Our volumes are transparent and glowing, so that rule is wrong. In a controlled test on a small 15-blob phantom, the same fit scored 31.7 dB when compared at the voxels and minus 7.1 dB through the splatting renderer. So from here on we compare blobs to voxels directly. Our final phantom fit, with 2,000 blobs on a 50-blob phantom, reached 47.9 dB, almost perfect; that is a separate, later run.",
     ["Phantom: artificial test data with a known answer.",
      "PSNR (peak signal-to-noise ratio), in dB: a number for how close the reconstruction is to the data; higher is better, +3 dB roughly halves the squared error. It says nothing about whether nuclei survive.",
      "3D Gaussian splatting: a 2023 graphics method that represents scenes as blobs and draws them for a camera.",
      "Alpha-blending (alpha-compositing): the renderer rule that each blob partly hides the blobs behind it. Correct for opaque surfaces, wrong for glowing transparent volumes.",
      "Comparing at every voxel (voxel query): evaluate the blob sum at each voxel centre and compare with the data. No camera, no hiding."],
-    ["Why −7.1 dB and 47.9 dB on different phantoms? −7.1 vs 31.7 dB was the controlled comparison on a 15-blob phantom (same fit, two ways of scoring). 47.9 dB is the final phantom fit with 2,000 blobs."]);
+    ["Why two phantoms? 31.7 vs −7.1 dB is the controlled comparison (same fit, two ways of scoring, 15-blob phantom). 47.9 dB is a later run (2,000 blobs fitted to a 50-blob phantom) and is not part of that comparison."]);
 }
 
 // ================================================================ 6a. Akim: phantom starting positions
@@ -301,22 +301,30 @@ addSection("Simple setup and changes");
 // ================================================================ 6. step 5 shape re-test
 {
   const s = content("Simple setup and changes", "Step 5 · Repeats confirm: stretching is real");
-  s.addChart(pres.charts.BAR, [{ name: "PSNR (dB)", labels: ["round", "stretched", "stretched + rotated"], values: [22.31, 25.21, 25.51] }],
-    Object.assign({}, chartText, { x: 0.5, y: 1.15, w: 5.2, h: 3.55, barDir: "col", chartColors: [HEX.accent2],
-      showValue: true, dataLabelPosition: "outEnd", dataLabelFormatCode: "0.0", valAxisMinVal: 20, valAxisMaxVal: 26,
-      valAxisLabelFormatCode: "0", showLegend: false, showTitle: true, title: "Real Tribolium crops: PSNR (dB), axis from 20",
+  // runs/param_inversion_3d/param_inversion.csv: mean of 5 seeds per shape and budget
+  const shapes = ["round", "stretched", "stretched + rotated"];
+  s.addChart(pres.charts.BAR, [
+    { name: "50 blobs", labels: shapes, values: [21.60, 25.07, 25.46] },
+    { name: "100 blobs", labels: shapes, values: [22.20, 25.21, 25.54] },
+    { name: "250 blobs", labels: shapes, values: [23.14, 25.34, 25.52] }],
+    Object.assign({}, chartText, { x: 0.5, y: 1.15, w: 5.2, h: 3.55, barDir: "col",
+      chartColors: ["9CC3EE", HEX.accent2, "1D4F8F"], showValue: false, valAxisMinVal: 20, valAxisMaxVal: 26,
+      valAxisLabelFormatCode: "0", showLegend: true, legendPos: "b", legendFontSize: 12, showTitle: true,
+      title: "Tribolium crops: PSNR (dB), 5 seeds each, axis from 20",
       titleFontSize: 12, titleColor: HEX.dk2, barGapWidthPct: 60 }));
+  txt(s, "Seed-to-seed spread (SD) within each bar: 0.02–0.13 dB", { x: 0.5, y: 4.75, w: 5.2, h: 0.3, fontSize: 12, color: C.accent5 });
   steps(s, [
     ["WHAT WE DID", "Re-ran round, stretched and stretched + rotated blobs with 5 seeds and 3 budgets each"],
     ["WHY", "Akim had one run per setting; a single run can be luck"],
-    ["RESULT", "+3.2 dB with small spread; learned blobs are as stretched as real nuclei"],
+    ["RESULT", "+3.2 dB (22.3 → 25.5), seed SD ≤ 0.13 dB; learned blobs as stretched as real nuclei"],
   ]);
   notes(s,
-    "Our first own step was to check Akim's shape result with repeats: the same three blob shapes, each fitted 15 times, with 5 random seeds and 3 blob budgets, on the same kind of real crops. The result holds: 22.3 dB for round blobs, 25.5 for stretched and rotated, and the spread between repeats is small. Most of the gain comes from stretching; rotation adds half a dB. And the blobs did what we expected: their depth-to-width ratio, 0.79, is close to the ratio measured on the real nuclei, 0.73. Real nuclei look stretched in depth partly because the microscope blurs more along that axis.",
+    "Our first own step was to check Akim's shape result with repeats: the same three blob shapes, at 50, 100 and 250 blobs, each with 5 random seeds, on the same kind of real crops. The result holds at every budget: averaged over all 15 fits, 22.3 dB for round blobs and 25.5 for stretched and rotated. Repeats with different seeds differ by at most about a tenth of a dB, far less than the 3 dB effect. Most of the gain comes from stretching; rotation adds about 0.3 dB. And the blobs did what we expected: their depth-to-width ratio, 0.79, is close to the ratio measured on the real nuclei, 0.73. Real nuclei look stretched in depth partly because the microscope blurs more along that axis.",
     ["Round (isotropic) blob: same size in every direction.",
      "Stretched (anisotropic, axis-aligned) blob: three independent sizes along x, y and z.",
      "Rotation: lets the stretched blob point in any direction.",
-     "Seed: the random number that decides the starting point of a fit; different seeds test whether a result is luck."],
+     "Seed: the random number that decides the starting point of a fit; different seeds test whether a result is luck.",
+     "SD (standard deviation): the typical distance of single results from their average; here, how much repeats differ."],
     ["Did this also help finding nuclei? Slightly: nucleus F1 0.745 (round) vs 0.805 (stretched + rotated), significant in a paired test (p = 0.006, 5 seeds).",
      "Why does the axis start at 20? To make a 3 dB difference visible; it is stated on the chart."]);
 }
@@ -414,24 +422,26 @@ addSection("Results and validation");
 {
   const s = content("Results and validation", "Does the fit behave as expected?");
   const cards = [
-    ["0.79 vs 0.73", "depth-to-width ratio: learned blobs vs measured nuclei"],
-    ["14 vs 10", "hand-marked Drosophila nuclei in the top 100 detections: fitted blobs vs raw image"],
-    ["≤ 4%", "difference in nuclei found between three repeated fits"],
+    ["0.79 vs 0.73", "depth-to-width ratio: learned blobs vs measured nuclei", C.accent3],
+    ["14 vs 10", "of 29 hand-marked Drosophila nuclei in the top 100 detections: fitted blobs vs raw brightness", C.accent3],
+    ["16–18", "same top 100, raw candidates ranked by a simple LoG blob filter: better than every fit", C.accent4],
   ];
-  cards.forEach(([big, small], i) => {
+  cards.forEach(([big, small, col], i) => {
     const x = 0.5 + i * 3.05;
     card(s, x, 1.25, 2.85, 2.6, `check-${i}`);
-    txt(s, big, { x: x + 0.2, y: 1.45, w: 2.45, h: 0.8, fontSize: 32, bold: true, color: C.accent3, fontFace: "Cambria" });
-    txt(s, small, { x: x + 0.2, y: 2.35, w: 2.45, h: 1.35, fontSize: 15, color: C.text2 });
+    txt(s, big, { x: x + 0.2, y: 1.45, w: 2.45, h: 0.8, fontSize: 32, bold: true, color: col, fontFace: "Cambria" });
+    txt(s, small, { x: x + 0.2, y: 2.35, w: 2.45, h: 1.4, fontSize: 15, color: C.text2 });
   });
-  txt(s, "Limit: with all 457 of its candidates the raw-image detector finds 26 of 29, more than any fit.",
-    { x: 0.5, y: 4.2, w: 9.0, h: 0.6, fontSize: 15, color: C.text2 });
+  txt(s, "Fitting ranks nuclei better than brightness, but not better than a simple blob filter. With all 457 candidates the raw detector finds 26 of 29.",
+    { x: 0.5, y: 4.1, w: 9.0, h: 0.7, fontSize: 15, color: C.text2 });
   notes(s,
-    "Three checks that the fit does what we think. First, shape: the learned blobs are about as stretched as the real nuclei. Second, the honest test against people's annotations: on Drosophila, among the 100 most confident detections, the fitted blobs contain 14 of 29 hand-marked nuclei, the raw image only 10. So fitting ranks real nuclei higher. Third, fits are repeatable. And the limit: if the plain detector may use all its candidates it finds 26 of 29, more than any fit. So this is better ranking, not a better detector.",
+    "Checks that the fit does what we think. First, shape: the learned blobs are about as stretched as the real nuclei. Second, the honest test against people's annotations: on Drosophila, among the 100 most confident detections, the fitted blobs contain 14 of 29 hand-marked nuclei, the raw image ranked by brightness only 10. So fitting ranks real nuclei higher than brightness does. But third, the stronger baseline: a classic blob filter, LoG, applied to the same raw candidates puts 16 to 18 marked nuclei in the top 100, in seconds and without any fitting. So the fit beats the naive baseline, not the simple strong one. And if the plain detector may use all its candidates it finds 26 of 29, more than any fit. This is better ranking than brightness, not a better detector.",
     ["Top 100 detections: compare methods at the same number of guesses, because only some nuclei are marked and extra detections cannot be judged as wrong.",
-     "Raw-image detector: the same peak detector run directly on the original data.",
-     "Repeated fits: the same data fitted three times; for the Luxar fits used later, nuclei kept differed by at most 2.1-3.7 points depending on the detector."],
-    ["How noisy is 14 vs 10? One nucleus is 3.4% of 29; we only call a difference real if it is about 3 nuclei and has the same sign in all seeds (mean of 3 seeds here)."]);
+     "Raw brightness: the raw image's candidate peaks ranked simply by how bright they are.",
+     "LoG blob filter: ranks the same candidates by how well they look like a round blob of nucleus size."],
+    ["How noisy is 14 vs 10? One nucleus is 3.4% of 29; we only call a difference real if it is about 3 nuclei and has the same sign in all seeds (mean of 3 seeds here).",
+     "Why 16-18? 16 with LoG scales fixed in advance (1.5-3 micrometres); 18 with a single 2-micrometre scale chosen after seeing results.",
+     "Are fits repeatable? Our own fits: seed spread at most 0.13 dB (Step 5). Luxar, used on the next slides: three repeated fits of one frame differed by at most 2.1-3.7 percentage points of nuclei kept, depending on the detector."]);
 }
 
 // ================================================================ 12. SOTA setup
@@ -444,19 +454,22 @@ addSection("State of the art");
     const x = 0.5 + i * 2.27;
     txt(s, label, { x, y: 1.12, w: 2.2, h: 0.3, fontSize: 14, bold: true, align: "center" });
     s.addImage({ path: FIG(`four_${f}.png`), x, y: 1.45, w: 2.2, h: 1.68, objectName: `four-${f}` });
-    if (f !== "raw") txt(s, `${L[f][1]}% of nuclei kept`, { x, y: 3.15, w: 2.2, h: 0.28, fontSize: 12, color: C.accent5, align: "center" });
+    if (f !== "raw") txt(s, [{ text: `${L[f][1]}% of nuclei kept`, options: { breakLine: true } },
+      { text: "2D Cellpose, whole frame", options: { fontSize: 10 } }],
+    { x, y: 3.15, w: 2.2, h: 0.45, fontSize: 12, color: C.accent5, align: "center" });
   });
-  const pts = [["Luxar (2026)", "state-of-the-art Gaussian-blob tool for microscopy"], ["JPEG2000", "standard image compression, set to exactly the same file size"], ["Test", "12 C. elegans frames, 2,958 hand-marked nuclei, 4 nucleus detectors"]];
+  const pts = [["Luxar (2026)", "state-of-the-art Gaussian-blob tool for microscopy"], ["JPEG2000", "standard image compression, set to exactly the same file size"], ["Test", "12 C. elegans frames from 2 embryos, 2,958 hand-marked nuclei, 4 detectors"]];
   pts.forEach(([a, b], i) => {
     txt(s, [{ text: a, options: { bold: true, color: HEX.accent1, breakLine: true } }, { text: b }],
-      { x: 0.5 + i * 3.05, y: 3.6, w: 2.85, h: 1.3, fontSize: 15, color: C.text1 });
+      { x: 0.5 + i * 3.05, y: 3.75, w: 2.85, h: 1.3, fontSize: 15, color: C.text1 });
   });
   notes(s,
-    "Our own fits were better than our naive start, but are they better than what exists? The strongest existing tool is Luxar, from the Royer lab, which fits Gaussian blobs to large microscopy data. We compared Luxar with ordinary image compression, JPEG2000, squeezed to exactly the same number of bytes, on 12 C. elegans frames with almost 3,000 hand-marked nuclei, and asked four different nucleus detectors how many nuclei survive. The pictures show the same region at about 89 times smaller: the codecs keep the texture, Luxar draws smooth blobs.",
+    "Our own fits were better than our naive start, but are they better than what exists? The strongest existing tool is Luxar, from the Royer lab, which fits Gaussian blobs to large microscopy data. We compared Luxar with ordinary image compression, JPEG2000, squeezed to exactly the same number of bytes, on 12 C. elegans frames from two embryos with almost 3,000 hand-marked nuclei, and asked four different nucleus detectors how many nuclei survive. The pictures show the same region at about 89 times smaller: the codecs keep the texture, Luxar draws smooth blobs. The percentages are whole-frame scores from one detector, 2D Cellpose.",
     ["Compression ratio: original size divided by compressed size; 100x means 100 times smaller.",
      "Same file size (matched bytes): every Luxar file is compared with a JPEG2000 file of exactly the same size on disk.",
      "JPEG2000 / JPEG-XL: standard image compression formats; here each 2D slice of the volume is compressed.",
-     "Nuclei kept: nuclei found after compression divided by nuclei found in the original by the same detector (1.0 = nothing lost)."],
+     "Nuclei kept: hand-marked nuclei found after compression divided by those found in the original by the same detector. 1.0 means the same number was found, not necessarily the same individual nuclei.",
+     "Whole-frame score: the percentages under the pictures are for the whole frame with 2D Cellpose; the pictures show only a small region."],
     ["Why not compare with our own fits? Luxar is faster and better engineered; if blobs are to win anywhere, the strongest blob tool must win.",
      "We found a bug in our own first JPEG2000 setup (it compressed the volume along the wrong axes, about 10 dB worse). Fixing it reversed our first conclusion; a test now prevents it."]);
 }
@@ -470,7 +483,7 @@ addSection("State of the art");
   Object.assign({}, chartText, { x: 0.5, y: 1.15, w: 5.6, h: 3.75, barDir: "col", chartColors: [HEX.accent2, HEX.accent4],
     showValue: true, dataLabelPosition: "outEnd", dataLabelFormatCode: "+0.0;-0.0", valAxisMinVal: -30, valAxisMaxVal: 10,
     valAxisLabelFormatCode: "+0;-0;0", showLegend: true, legendPos: "b", legendFontSize: 12, showTitle: true,
-    title: "Luxar minus JPEG2000: nuclei kept (points), mean of 12 frames", titleFontSize: 12, titleColor: HEX.dk2, barGapWidthPct: 40 }));
+    title: "Luxar minus JPEG2000: nuclei kept (points), mean of 12 frames, 2 embryos", titleFontSize: 12, titleColor: HEX.dk2, barGapWidthPct: 40 }));
   card(s, 6.35, 1.25, 3.15, 1.55, "psnr-card");
   txt(s, [{ text: "PSNR: JPEG2000 better", options: { bold: true, breakLine: true } }, { text: "on 12 of 12 frames" }],
     { x: 6.55, y: 1.42, w: 2.8, h: 1.2, fontSize: 18, color: C.text1 });
@@ -484,26 +497,28 @@ addSection("State of the art");
      "Watershed: a classical segmentation that separates touching bright regions, like water filling valleys.",
      "Cellpose: a widely used deep-learning model that outlines cells or nuclei. 2D mode works slice by slice and joins slices; 3D mode looks at the volume in three directions at once.",
      "Points: percentage points of nuclei kept, e.g. 0.90 vs 0.86 is 4 points.",
-     "Statistics: each frame counts once; Wilcoxon signed-rank tests over the 12 frames, Holm-corrected for 8 tests. Everything except LoG below 300x is significant (p ≤ 0.01)."],
+     "Statistics: each frame counts once; Wilcoxon signed-rank tests over the 12 frames, Holm-corrected for 8 tests. Everything except LoG below 300x is significant (Holm-corrected p ≤ 0.01). The 12 frames come from only 2 embryos, so they are not 12 independent animals."],
     ["Is LoG +1.3 real? No: 8 of 12 frames, p = 0.11; it comes from one embryo only.",
+     "Why frames and not single comparisons? An earlier draft averaged all matched pairs, with bootstrap intervals per pair. Pairs from one frame are not independent, so the final analysis averages per frame first and tests across frames; the numbers here are that final analysis, the same as in the paper.",
      "Why does JPEG2000 win at high compression? Below about 3 blobs per nucleus, blob fits lose whole nuclei; wavelet compression degrades gradually."]);
 }
 
 // ================================================================ 14. cliff
 {
-  const s = content("State of the art", "Below ~3 blobs per nucleus, nuclei vanish");
+  const s = content("State of the art", "C. elegans: nuclei vanish below ~3 blobs each");
   s.addImage({ path: FIG("cliff_deck.png"), x: 0.5, y: 1.2, w: 5.75, h: 3.4, objectName: "cliff" });
   steps(s, [
-    ["WHAT WE SEE", "Nuclei kept drops below 90% at 1.1-3.1 blobs per nucleus, on all 12 frames"],
-    ["PSNR", "Barely moves over these budgets: at most 2.6 dB per frame"],
-    ["SO", "Image quality cannot tell you when the blob budget is too small"],
+    ["WHAT WE SEE", "Under LoG, nuclei kept crosses 90% at 1.1–3.1 blobs per nucleus (all 12 frames)"],
+    ["PSNR", "For budgets of 1,000+ blobs it moves at most 2.6 dB per frame"],
+    ["SO", "Choosing the budget by PSNR can miss the cliff: check the nuclei"],
   ], 6.45, 3.05);
   notes(s,
-    "Why do blobs collapse at high compression? Each point is one Luxar fit; the x axis is blobs per hand-marked nucleus. Above about 3 blobs per nucleus almost every nucleus survives; below that, they disappear quickly, on every frame of both embryos. At the same time, PSNR changes very little across these budgets. So if you choose the budget by image quality, you can fall off this cliff without noticing.",
+    "Why do blobs collapse at high compression? Each point is one Luxar fit; the x axis is blobs per hand-marked nucleus. In these C. elegans frames, with the LoG detector, almost every nucleus survives above about 3 blobs per nucleus; below that, they disappear quickly, on every frame of both embryos: the 90% line is crossed between 1.1 and 3.1 blobs per nucleus. For budgets of 1,000 blobs and more, PSNR changes by at most 2.6 dB per frame. So if you choose the budget by image quality, you can fall off this cliff without noticing. Honestly, our advance test of that PSNR claim held on only 4 of the 8 added frames, because on small frames the cliff lies below 1,000 blobs.",
     ["Blobs per nucleus: number of blobs in the fit divided by the number of hand-marked nuclei in that frame.",
      "Cliff: a sudden drop instead of a gradual decline.",
      "90% line: the threshold we fixed in advance to define the cliff (we wrote down '≤ 3.5 blobs per nucleus' before running the extra frames)."],
-    ["Why fix thresholds in advance? So we cannot tune the claim to the data afterwards. Two of our advance predictions failed, and we report them as failed."]);
+    ["Does the 3-blobs rule hold everywhere? We only tested C. elegans frames with the LoG detector; other data or detectors may cross elsewhere.",
+     "Why fix thresholds in advance? So we cannot tune the claim to the data afterwards. Two of our advance predictions failed, and we report them as failed."]);
 }
 
 // ================================================================ 15. conclusion
@@ -514,39 +529,42 @@ addSection("Conclusion");
   currentTitle = "What we learned";
   s.addText(currentTitle, { placeholder: "title" });
   s.addText([
-    { text: "Shape, starting points, step size and a size cap each made the fit find more nuclei.", options: { bullet: true, breakLine: true } },
-    { text: "Blobs are good for looking, not for measuring: at the same file size a standard codec keeps nuclei as well or better.", options: { bullet: true, breakLine: true } },
-    { text: "PSNR cannot choose the format: test with the analysis you will actually run.", options: { bullet: true } },
-  ], { placeholder: "body", paraSpaceAfter: 14 });
+    { text: "Stretched blobs, one start per nucleus and a size cap made our fits find more nuclei; a simple blob filter still ranks them better.", options: { bullet: true, breakLine: true } },
+    { text: "At the same file size, the better format depends on the detector and the compression: blobs help 3D Cellpose below 300×, JPEG2000 wins beyond.", options: { bullet: true, breakLine: true } },
+    { text: "Viewing and measuring need separate checks: PSNR cannot choose the format.", options: { bullet: true } },
+  ], { placeholder: "body", paraSpaceAfter: 12 });
   s.addImage({ path: FIG("title_tribolium.png"), x: 7.05, y: 0.35, w: 2.55, h: 4.85, objectName: "end-tribolium" });
   notes(s,
-    "Three take-aways. One: our step-by-step changes made blob fits find nuclei much more reliably. Two: compared with the state of the art at equal file size, blobs are good for viewing but not the right format for measuring; a standard codec keeps the nuclei as well or better. Three: the usual image-quality number cannot decide this; you have to test with the analysis you plan to run.",
+    "Three take-aways. One: our step-by-step changes made blob fits find nuclei more reliably, but on hand-marked nuclei a simple blob filter still ranks them better. Two: compared with the state of the art at the same file size, there is no single winner. Below 300 times, the blobs help 3D Cellpose and hurt the watershed and 2D Cellpose; beyond 300 times JPEG2000 keeps more nuclei for every detector. Three: a format that looks good is not automatically good for measuring, and the usual image-quality number cannot decide this; you have to test with the analysis you plan to run.",
     ["Codec: a compression method (coder-decoder)."],
-    ["So was the project a failure? No: we now know where blobs should and should not be trusted, which is what a user needs; and the evaluation method itself is reusable."]);
+    ["So was the project a failure? No: we now know where blobs should and should not be trusted, which is what a user needs; and the evaluation method itself is reusable.",
+     "Are blobs useless for measuring? Not in general: with 3D Cellpose they kept more nuclei at moderate compression. But each analysis has to be checked separately."]);
 }
 
 // ================================================================ 16. next
 {
   const s = content("Conclusion", "Next: compression that biologists can use");
   const items = [
-    ["Lossless and near-lossless", "what labs actually store: exact, or errors kept below the camera noise"],
+    ["Lossless storage", "what labs keep today: bit-exact; 4.2× with lossless JPEG-XL on one C. elegans frame"],
+    ["Noise-bounded coding", "one specific near-lossless method: every change kept below the camera noise"],
     ["Video codecs", "use the similarity between neighbouring slices and time points"],
     ["Judge by tracking", "measure with the Cell Tracking Challenge scores, not image quality"],
   ];
   items.forEach(([a, b], i) => {
-    const y = 1.25 + i * 1.2;
-    s.addShape(pres.shapes.OVAL, { x: 0.5, y: y + 0.05, w: 0.6, h: 0.6, fill: { color: C.accent1 }, line: { color: C.accent1 }, objectName: `num-${i}` });
-    txt(s, String(i + 1), { x: 0.5, y: y + 0.05, w: 0.6, h: 0.6, fontSize: 20, bold: true, color: C.background1, align: "center", valign: "middle" });
+    const y = 1.15 + i * 0.95;
+    s.addShape(pres.shapes.OVAL, { x: 0.5, y: y + 0.05, w: 0.55, h: 0.55, fill: { color: C.accent1 }, line: { color: C.accent1 }, objectName: `num-${i}` });
+    txt(s, String(i + 1), { x: 0.5, y: y + 0.05, w: 0.55, h: 0.55, fontSize: 18, bold: true, color: C.background1, align: "center", valign: "middle" });
     txt(s, [{ text: a, options: { bold: true, breakLine: true } }, { text: b, options: { color: HEX.dk2 } }],
-      { x: 1.35, y, w: 8.1, h: 1.0, fontSize: 17 });
+      { x: 1.3, y, w: 8.2, h: 0.85, fontSize: 16 });
   });
   notes(s,
-    "Following our supervisor's advice, the next step is compression biologists would actually use: lossless storage, or near-lossless where every error stays below the camera noise; video codecs, which exploit the similarity between neighbouring slices and time points; and judging success by whether cells can still be tracked, using the Cell Tracking Challenge's official scores.",
+    "This is a change of direction, agreed with our supervisor after his feedback. So far we asked whether Gaussian blobs can store and show microscopy data; he pointed out that labs store their raw data losslessly and rarely use lossy formats like JPEG. So the next step is compression biologists would actually use. First, lossless storage, which gives about 2 to 4 times; we measured 4.2 times with lossless JPEG-XL on one C. elegans frame. Second, one specific near-lossless approach, noise-bounded coding, where every voxel may change but by less than the camera noise. Third, video codecs, which exploit the similarity between neighbouring slices and time points. And fourth, judging success by whether cells can still be tracked, using the Cell Tracking Challenge's official scores.",
     ["Lossless: the decompressed data is bit-for-bit identical to the original.",
-     "Near-lossless / noise-bounded: every voxel may change, but by less than the camera's own noise.",
+     "Near-lossless: small, bounded changes are allowed. Noise-bounded coding is one way to set that bound: below the camera's own noise.",
      "Video codec: compression made for movies (e.g. H.265, AV1) that predicts each frame from its neighbours.",
      "Tracking: following each cell over time, including divisions."],
-    ["How much do lossless methods give? Typically 2-4x on microscopy (we measured 4.2x with lossless JPEG-XL on C. elegans); noise-bounded methods reach far more on raw camera data (up to ~100x reported for B3D)."]);
+    ["How much do lossless methods give? On our C. elegans frame: lossless JPEG-XL 4.2x, JPEG-LS 2.9x, JPEG2000 lossless 2.7x, Zstandard 2.5x. Noise-bounded coding can go further; how far depends on the camera noise, and we have not measured it on our data yet.",
+     "Why change direction? The supervisor's feedback: biologists need their measurements to stay valid, and they trust lossless or noise-bounded storage. Gaussian blobs remain interesting for viewing."]);
 }
 
 (async () => {

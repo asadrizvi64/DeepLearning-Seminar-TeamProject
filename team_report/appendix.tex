@@ -32,14 +32,16 @@
     real; their harmonic mean.
   \item[Top-$N$ comparison] Comparing methods at the same number of detections, because recall
     grows with the number of detections.
-  \item[Nuclei kept] Nuclei found after compression divided by nuclei found in the raw volume by
-    the same detector (1.0 = nothing lost).
+  \item[Nuclei kept] Labelled nuclei found after compression divided by those found in the raw
+    volume by the same detector; 1.0 means the same number was found, not necessarily the same
+    individual nuclei.
   \item[Points] Percentage points of nuclei kept, \eg 0.90 against 0.86 is 4 points.
   \item[Compression ratio] Original size divided by compressed size.
   \item[Matched bytes] Two compressed files of exactly the same size on disk.
   \item[Codec] A compression method (coder--decoder), \eg JPEG2000 or JPEG-XL.
-  \item[Lossless / near-lossless] Decompressed data identical to the original / every voxel
-    changes by less than the camera noise.
+  \item[Lossless / near-lossless] Decompressed data identical to the original / small, bounded
+    changes allowed. \emph{Noise-bounded} coding is one near-lossless scheme, in which every
+    voxel changes by less than the camera noise.
   \item[LoG] Laplacian of Gaussian, a classical blob detector that responds to bright round spots
     of a given size.
   \item[Watershed] A classical segmentation that separates touching bright regions like water

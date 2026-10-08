@@ -11,8 +11,7 @@ Spatial Understanding ([weigertlab/tud_templates](https://github.com/weigertlab/
   `scripts/fidelity/paper_numbers.py`; refresh with `make sync`
 - `references.bib`: `paper/refs.bib` plus the entries only the report cites
 
-Still to fill in: Akim's surname and both matriculation numbers (title page, marked with
-brackets).
+Still to fill in: Akim Al-Makhdar's matriculation number (title page, in brackets).
 
 ## Build
 
