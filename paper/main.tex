@@ -225,12 +225,13 @@ nuclei kept near \SI{90}{\times} (mean).}
 
 \section{Discussion and Limitations}
 On this data no storage format is best for every analysis. JPEG-XL is nearly lossless to
-$\approx$\SI{100}{\times}; beyond it, JPEG2000 is the safer choice for slice-wise and
-threshold-based segmentation and the only safe one past \SI{300}{\times}, while Gaussian splats
-help volumetric Cellpose at moderate ratios, at the cost of minutes of GPU fitting. PSNR is not
-random---its preference for JPEG2000 is right in most of these cases---but it ranks the two
-formats the same way at every size, so it cannot tell which representation is safer for a
-given analysis. We recommend comparing
+$\approx$\SI{100}{\times}; beyond it, JPEG2000 kept more nuclei for slice-wise and
+threshold-based segmentation, and for every detector we tested past \SI{300}{\times}, while
+Gaussian splats helped volumetric Cellpose at moderate ratios, at the cost of minutes of GPU
+fitting. None of this establishes that any format is safe in general. PSNR is not
+random---its preference for JPEG2000 matched most of these outcomes---but it ranks the two
+formats the same way at every size, so it is insufficient to determine detector-specific
+outcomes. We recommend comparing
 Gaussian volume compression with a verified codec at identical bytes, reporting object-level
 recall with the detector that will be used downstream, and checking a splat budget at the
 object level before trusting it (survival is a label-free start).
