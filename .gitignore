@@ -16,3 +16,17 @@ runs/colleague_full_volume.npy
 ~$*
 presentation/node_modules/
 presentation/package-lock.json
+
+# team report: local preview build artefacts
+team_report/_build/
+team_report/_preview.tex
+team_report/*.aux
+team_report/*.log
+team_report/*.bbl
+team_report/*.bcf
+team_report/*.blg
+team_report/*.fdb_latexmk
+team_report/*.fls
+team_report/*.out
+team_report/*.run.xml
+team_report/*.toc

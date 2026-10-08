@@ -1,0 +1,131 @@
+\section{Glossary}\label{app:glossary}
+
+\begin{description}\small
+  \item[3D Gaussian blob (splat)] A soft, possibly stretched and rotated ball of brightness,
+    brightest in the middle and fading outwards; ``Gaussian'' describes how it fades.
+  \item[Voxel] A 3D pixel: one brightness value at one point of the volume.
+  \item[Light-sheet microscope] A microscope that illuminates the sample with a thin sheet of
+    light and images it layer by layer, giving fast, gentle 3D recordings of living embryos.
+  \item[Frame] One 3D snapshot at one time point; a recording is a series of frames.
+  \item[Maximum projection] A 2D picture of a volume that keeps, along each line of sight, the
+    brightest voxel.
+  \item[Ground truth / human labels] Nucleus positions marked by experts; checks against them
+    are not circular.
+  \item[Detector-derived reference] Nucleus positions found by a program; a method can look good
+    simply by agreeing with that program.
+  \item[Phantom] Synthetic test data with a known answer.
+  \item[PSNR] Peak signal-to-noise ratio, in dB: how close a reconstruction is to the data;
+    higher is better and $+3$\,dB roughly halves the squared error. It says nothing about
+    whether individual objects survive.
+  \item[Alpha-compositing] The rule in 3D Gaussian splatting that each blob partly hides the
+    blobs behind it; correct for opaque surfaces, wrong for transparent, glowing volumes.
+  \item[Voxel query] Evaluating the blob sum at every voxel centre and comparing it with the data,
+    without a camera.
+  \item[Budget ($K$)] The number of blobs (splats) allowed.
+  \item[Initialisation / seeding] Where blobs are placed before fitting starts.
+  \item[Learning rate] How far each fitting step moves the parameters.
+  \item[Migration] A blob's nearest nucleus changes between start and end of fitting.
+  \item[Densification] Adding blobs during fitting by splitting or cloning existing ones where
+    the error is large.
+  \item[Size cap] An upper limit on the scale of the blobs that started on nuclei.
+  \item[Recall, precision, F1] Share of reference nuclei found; share of detections that are
+    real; their harmonic mean.
+  \item[Top-$N$ comparison] Comparing methods at the same number of detections, because recall
+    grows with the number of detections.
+  \item[Nuclei kept] Nuclei found after compression divided by nuclei found in the raw volume by
+    the same detector (1.0 = nothing lost).
+  \item[Points] Percentage points of nuclei kept, \eg 0.90 against 0.86 is 4 points.
+  \item[Compression ratio] Original size divided by compressed size.
+  \item[Matched bytes] Two compressed files of exactly the same size on disk.
+  \item[Codec] A compression method (coder--decoder), \eg JPEG2000 or JPEG-XL.
+  \item[Lossless / near-lossless] Decompressed data identical to the original / every voxel
+    changes by less than the camera noise.
+  \item[LoG] Laplacian of Gaussian, a classical blob detector that responds to bright round spots
+    of a given size.
+  \item[Watershed] A classical segmentation that separates touching bright regions like water
+    filling valleys.
+  \item[Cellpose 2D / 3D] A widely used deep-learning segmenter; the 2D mode works slice by slice
+    and joins the slices, the 3D mode combines predictions from three viewing directions.
+  \item[Wilcoxon signed-rank test, Holm correction] A test of whether paired differences are
+    centred on zero; a correction that keeps the error rate under control across several tests.
+  \item[Budget cliff] The sudden loss of nuclei once fewer than about three splats per nucleus
+    remain.
+  \item[Survival] Share of the raw volume's 100 strongest LoG detections still found after
+    compression; needs no labels.
+  \item[Pre-registration] Writing down pass/fail rules before the data they apply to are seen.
+\end{description}
+
+\section{Evaluation and pipeline bugs found}\label{app:bugs}
+
+\begin{table}[!htb]
+  \centering\small
+  \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{4.1cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.6cm}@{}}
+    \toprule
+    Bug & Effect & Status \\
+    \midrule
+    Crop centred on the bounding box & Hollow embryo: crops fitted empty interior, not nuclei &
+      Fixed; crop anchored at the pole \\
+    Cubic detection window in voxels & Nuclei merged along $z$; 5/29 instead of 22/29 recoverable & Fixed; physical window \\
+    Matching radius in voxels & Distant $z$-pairs accepted as matches & Fixed; matched in \si{\micro\meter} \\
+    Position learning rate not rescaled & Blobs moved $<1$ voxel; mistaken for a physical barrier & Diagnosed (Step~7) \\
+    Assignment followed by radius filter & Valid matches dropped & Fixed; saved results rescored \\
+    Flat regions reported as peaks & Every plateau voxel a ``nucleus'' & Fixed (prominence guard) \\
+    Rankings compared at unequal budgets & A ranking judged better at a small budget lost at a large one & Fixed; matched budgets \\
+    JPEG2000 axis error & Wavelet never ran along $x$; $\approx$\SI{10}{dB} lost; first conclusion reversed & Fixed; header test \\
+    Watershed scorer used unconfigured voxel size & Too tight effective radius & Fixed; test added \\
+    Interrupted Cellpose cache (all zeros) & One volume scored as 0\% kept; 2D deficit $-13.0$ instead of $-9.4$ & Fixed; atomic writes, cache check \\
+    \bottomrule
+  \end{tabularx}
+  \caption{Bugs that changed a number or a conclusion before they were caught. Each evaluation
+  bug is now pinned by one of the 24 regression tests in \texttt{scripts/test\_metrics.py}.}
+  \label{tab:bugs}
+\end{table}
+
+\section{Pre-registered decision rules}\label{app:rules}
+
+Before each new batch of the state-of-the-art comparison was analysed, the pass/fail rules were
+committed to the repository (\texttt{paper/DECISION\_RULES.md}); claims follow the verdicts and
+were not adjusted afterwards. \Cref{tab:rules} lists the main rules and outcomes.
+
+\begin{table}[!htb]
+  \centering\small
+  \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.4cm}@{}}
+    \toprule
+    Rule & Criterion (fixed in advance) & Outcome \\
+    \midrule
+    Cliff (8 added frames) & LoG keeps $\ge90\%$ only above $\le3.5$ splats per nucleus, on $\ge6$ of 8 frames & Holds on 8 of 8 \\
+    PSNR misses the cliff & Luxar PSNR varies $<3$\,dB over $K$ = 1{,}000--16{,}000 while LoG nuclei kept varies $\ge0.15$, on $\ge6$ of 8 & \textbf{Fails}: 4 of 8; reported narrowed \\
+    Detector dependence (2D Cellpose) & JPEG-XL keeps $\ge5$ points more than Luxar at $K$ = 16{,}000, on $\ge6$ of 8 & Holds on 8 of 8 \\
+    Stitching (3D Cellpose) & Same gap $\ge5$ points on $\ge75\%$ of frames would rule out slice-wise processing as the cause & Gap on 0 of 12: penalty is from slice-wise processing \\
+    Learned vs classical (watershed) & Gap $<5$ points on $\ge75\%$ of frames & 11 of 12 \\
+    Luxar's own budget $K^\ast$ & Keeps $\ge95\%$ of nuclei under LoG & Holds on all calibrated frames \\
+    Splats vs JPEG2000 at matched bytes & Splats may be called better only where the paired interval lies above zero & Reported per detector and regime (\cref{tab:main}) \\
+    \bottomrule
+  \end{tabularx}
+  \caption{Main pre-registered rules of the state-of-the-art comparison and their outcomes.
+  Two earlier claims were withdrawn on these grounds: that splats beat JPEG2000 beyond
+  \SI{200}{\times} (an artefact of the JPEG2000 bug) and that the 2D Cellpose penalty reflects
+  a learned model (refuted by its 3D mode).}
+  \label{tab:rules}
+\end{table}
+
+\section{Reproducibility}\label{app:repro}
+
+Code, rules and results are in the project repository,\\
+\url{https://github.com/asadrizvi64/DeepLearning-Seminar-TeamProject}.
+\begin{itemize}
+  \item Regression suite: \texttt{python scripts/test\_metrics.py} (24 tests).
+  \item State-of-the-art comparison: \texttt{bash scripts/fidelity/reproduce.sh} regenerates every
+    number, table and figure of \cref{sec:sota} from the per-frame result files and asserts the
+    worded claims; \texttt{paper/CLAIMS.md} maps each claim to its evidence. In this report,
+    \texttt{make sync} copies the generated numbers and tables.
+  \item Human-label experiment: \path{scripts/rerank_factorial.py}. Size cap:
+    \path{runs/scale_cap_rescore/}. Akim's archive, summarised:
+    \path{runs/colleague_all_runs.csv} (the raw archive is kept outside the public
+    repository).
+  \item Luxar fits ran on the TU Dresden ZIH clusters (A100 and H100 GPUs); codecs and detectors
+    on a laptop CPU, Cellpose 3D on the cluster.
+  \item Earlier fitting results carry \texttt{git\_dirty=True}: the recorded commit alone does not
+    reconstruct their code. Loss-weighting and some trajectory results could not be rescored
+    after the matcher fix and are not used here.
+\end{itemize}
