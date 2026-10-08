@@ -208,21 +208,71 @@ addSection("Simple setup and changes");
     ["Why −7.1 dB and 47.9 dB on different phantoms? −7.1 vs 31.7 dB was the controlled comparison on a 15-blob phantom (same fit, two ways of scoring). 47.9 dB is the final phantom fit with 2,000 blobs."]);
 }
 
-// ================================================================ 6. step 1 shape
+// ================================================================ 6a. Akim: phantom starting positions
 {
-  const s = content("Simple setup and changes", "Step 1 · Let blobs stretch and rotate");
+  const s = content("Simple setup and changes", "Step 1 · Start blobs on bright peaks");
+  s.addChart(pres.charts.BAR, [{ name: "PSNR (dB)",
+    labels: ["random start", "random, more steps", "start on peaks", "peaks, more steps"], values: [31.97, 33.65, 53.05, 55.12] }],
+  Object.assign({}, chartText, { x: 0.5, y: 1.15, w: 5.2, h: 3.55, barDir: "col", chartColors: [HEX.accent2],
+    showValue: true, dataLabelPosition: "outEnd", dataLabelFormatCode: "0.0", valAxisMinVal: 0, valAxisMaxVal: 60,
+    valAxisLabelFormatCode: "0", showLegend: false, showTitle: true, catAxisLabelFontSize: 11,
+    title: "Akim's phantom experiments: best PSNR (dB) of 8 fits each", titleFontSize: 12, titleColor: HEX.dk2, barGapWidthPct: 50 }));
+  steps(s, [
+    ["WHAT AKIM CHANGED", "Random starting positions → one blob on each bright peak"],
+    ["WHY", "A blob that starts far from any structure wastes the whole fit"],
+    ["RESULT", "+21 dB on the phantom (32 → 53); more steps alone gave only +1.7"],
+  ]);
+  notes(s,
+    "This is my teammate Akim's work, from his archive of 57 experiments. On the phantom, he compared random starting positions with starting each blob on a bright peak of the data. More fitting steps barely helped random starts, plus 1.7 dB. Starting on peaks jumped from 32 to 53 dB, and with 3,000 steps to 55. So the very first lesson was: where the blobs start matters more than how long you fit.",
+    ["Starting position (initialisation): where each blob is placed before fitting begins.",
+     "Bright peak (local maximum): a voxel brighter than all its neighbours; a quick guess for where a blob belongs.",
+     "Fitting steps (iterations): how many times all blob numbers are adjusted.",
+     "Best of 8 fits: each setting was run with four blob shapes and two budgets (50 and 100 blobs); the bar shows the best one."],
+    ["Why does a random start fail? Later we found the reason: blobs barely move during fitting with the default step size (Step 5).",
+     "Who did what? Steps 1 and 2 are Akim's experiments; Steps 0 and 3-6 are ours; the comparison with the state of the art is ours."]);
+}
+
+// ================================================================ 6b. Akim: real-data sweep
+{
+  const s = content("Simple setup and changes", "Step 2 · Real data: stretched, rotated blobs win");
+  s.addChart(pres.charts.BAR, [{ name: "median PSNR (dB)",
+    labels: ["fixed round", "learned round", "stretched", "stretched + rotated"], values: [6.82, 20.36, 23.32, 23.96] }],
+  Object.assign({}, chartText, { x: 0.5, y: 1.15, w: 5.2, h: 3.55, barDir: "col", chartColors: [HEX.accent2],
+    showValue: true, dataLabelPosition: "outEnd", dataLabelFormatCode: "0.0", valAxisMinVal: 0, valAxisMaxVal: 30,
+    valAxisLabelFormatCode: "0", showLegend: false, showTitle: true, catAxisLabelFontSize: 11,
+    title: "Akim's real Tribolium sweep: median PSNR (dB), ~75 fits per shape", titleFontSize: 12, titleColor: HEX.dk2, barGapWidthPct: 50 }));
+  steps(s, [
+    ["WHAT AKIM TESTED", "43 experiments, 299 fits: 4 blob shapes, 50-1,000 blobs, sampling, loss, automatic settings"],
+    ["WHY", "Real nuclei are not the phantom: stretched, unevenly bright, packed tightly"],
+    ["RESULT", "Stretched + rotated blobs best; top fit 25.9 dB with 750-1,000 blobs on the whole volume"],
+  ]);
+  notes(s,
+    "Then Akim moved to the real Tribolium data: 43 experiments and 299 fits. He compared four blob shapes: a fixed round blob, a round blob whose size is learned, a stretched blob, and a stretched blob that can also rotate. Fixed round blobs basically fail, 6.8 dB. Stretched and rotated blobs are best, median 24 dB. He also varied the number of blobs from 50 to 1,000, how voxels are sampled during fitting, the loss, and an automatic tuner that reads settings from the data. His best fit was 25.9 dB with 750 to 1,000 blobs on the whole volume. He also tried splitting blobs during fitting, densification, which did not beat a fixed budget, and matching the number of blobs to the number of cells, which found cells with F1 0.76.",
+    ["Fixed round blob: every blob has the same, unchangeable size; only position and brightness are fitted.",
+     "Learned round blob: one size per blob, fitted.",
+     "Sampling: each fitting step looks at a random subset of voxels (here 50,000), partly chosen from bright regions.",
+     "Loss: the number the fit tries to reduce, here the squared difference between blobs and data (plus variants Akim tested).",
+     "Automatic settings (auto-tuner): Akim's tool that estimates background, noise, nucleus size and spacing from the data.",
+     "Densification: splitting or cloning blobs during fitting where the error is large (a standard 3D-splatting trick)."],
+    ["Why is fixed round so bad? Its size was fixed at 2 voxels while real nuclei need 5-7, so it cannot cover them; part of the gap is that constant, not roundness itself.",
+     "Why median, not best? One run per setting can be lucky; the median over ~75 fits is more robust. Our next step re-tested this with repeated seeds."]);
+}
+
+// ================================================================ 6. step 3 shape re-test
+{
+  const s = content("Simple setup and changes", "Step 3 · Repeats confirm: stretching is real");
   s.addChart(pres.charts.BAR, [{ name: "PSNR (dB)", labels: ["round", "stretched", "stretched + rotated"], values: [22.31, 25.21, 25.51] }],
     Object.assign({}, chartText, { x: 0.5, y: 1.15, w: 5.2, h: 3.55, barDir: "col", chartColors: [HEX.accent2],
       showValue: true, dataLabelPosition: "outEnd", dataLabelFormatCode: "0.0", valAxisMinVal: 20, valAxisMaxVal: 26,
       valAxisLabelFormatCode: "0", showLegend: false, showTitle: true, title: "Real Tribolium crops: PSNR (dB), axis from 20",
       titleFontSize: 12, titleColor: HEX.dk2, barGapWidthPct: 60 }));
   steps(s, [
-    ["WHAT WE CHANGED", "One size per blob → three sizes → three sizes plus rotation"],
-    ["WHY", "Nuclei look elongated in depth, and round blobs cannot fit that"],
-    ["RESULT", "+3.2 dB (15 fits per bar). Learned blobs are as stretched as real nuclei"],
+    ["WHAT WE DID", "Re-ran round, stretched and stretched + rotated blobs with 5 seeds and 3 budgets each"],
+    ["WHY", "Akim had one run per setting; a single run can be luck"],
+    ["RESULT", "+3.2 dB with small spread; learned blobs are as stretched as real nuclei"],
   ]);
   notes(s,
-    "First change on real data. A round blob has one size; real nuclei look stretched along the depth axis, partly because the microscope blurs more in depth. So we let each blob have three sizes, and then also a rotation. Image quality rose from 22.3 to 25.5 dB, averaged over 15 fits per setting: 5 random seeds times 3 blob budgets. Most of the gain comes from stretching; rotation adds half a dB. And the blobs did what we expected: their depth-to-width ratio, 0.79, is close to the ratio measured on the real nuclei, 0.73.",
+    "Our first own step was to check Akim's shape result with repeats: the same three blob shapes, each fitted 15 times, with 5 random seeds and 3 blob budgets, on the same kind of real crops. The result holds: 22.3 dB for round blobs, 25.5 for stretched and rotated, and the spread between repeats is small. Most of the gain comes from stretching; rotation adds half a dB. And the blobs did what we expected: their depth-to-width ratio, 0.79, is close to the ratio measured on the real nuclei, 0.73. Real nuclei look stretched in depth partly because the microscope blurs more along that axis.",
     ["Round (isotropic) blob: same size in every direction.",
      "Stretched (anisotropic, axis-aligned) blob: three independent sizes along x, y and z.",
      "Rotation: lets the stretched blob point in any direction.",
@@ -233,7 +283,7 @@ addSection("Simple setup and changes");
 
 // ================================================================ 7. step 2 seeding
 {
-  const s = content("Simple setup and changes", "Step 2 · Start each blob on a nucleus");
+  const s = content("Simple setup and changes", "Step 4 · Start each blob on a nucleus");
   s.addChart(pres.charts.BAR, [
     { name: "Brightest-peak start", labels: ["blob at a nucleus at start", "nuclei found after fitting"], values: [73, 52] },
     { name: "One start per nucleus", labels: ["blob at a nucleus at start", "nuclei found after fitting"], values: [100, 71] }],
@@ -242,12 +292,12 @@ addSection("Simple setup and changes");
     valAxisLabelFormatCode: "0\"%\"", showLegend: true, legendPos: "b", legendFontSize: 12, showTitle: true,
     title: "4 Tribolium regions, 110 nuclei", titleFontSize: 12, titleColor: HEX.dk2, barGapWidthPct: 50 }));
   steps(s, [
-    ["WHAT WE CHANGED", "Place one starting blob on every detected nucleus before spending blobs elsewhere"],
+    ["WHAT WE CHANGED", "Bright-peak starts → one starting blob on every detected nucleus first"],
     ["WHY", "During fitting blobs moved less than 1 voxel; nuclei are ~20 voxels apart"],
     ["RESULT", "Every nucleus gets a blob (73% → 100%); found nuclei 52% → 71%"],
   ]);
   notes(s,
-    "Second change. We measured how far blobs travel during fitting: less than one voxel on average, while nuclei are about 20 voxels apart. So a blob that starts between nuclei stays there. The old start put blobs on the brightest peaks, and bright background crowded out faint nuclei: only 73% of nuclei had a blob at the start. Starting one blob per detected nucleus covers all of them and raises the share of nuclei found after fitting from 52 to 71%.",
+    "Building on Akim's peak starts. We measured how far blobs travel during fitting: less than one voxel on average, while nuclei are about 20 voxels apart. So a blob that starts between nuclei stays there. Akim's start put blobs on the brightest peaks, and bright background crowded out faint nuclei: only 73% of nuclei had a blob at the start. Starting one blob per detected nucleus covers all of them and raises the share of nuclei found after fitting from 52 to 71%.",
     ["Detected nucleus / peak: a local brightness maximum found by a simple detector before fitting.",
      "Peak-search window (non-maximum suppression): around each peak, weaker peaks closer than a set distance are ignored, so one nucleus gives one peak.",
      "Found after fitting (recall): the share of reference nuclei that a detector still finds in the reconstruction."],
@@ -257,7 +307,7 @@ addSection("Simple setup and changes");
 
 // ================================================================ 8. step 3 learning rate
 {
-  const s = content("Simple setup and changes", "Step 3 · Bigger steps let blobs travel");
+  const s = content("Simple setup and changes", "Step 5 · Bigger steps let blobs travel");
   s.addChart(pres.charts.LINE, [{ name: "blobs that moved to another nucleus", labels: ["1×", "3×", "10×", "31×", "62×"], values: [1.0, 5.5, 14.5, 28.0, 32.0] }],
     Object.assign({}, chartText, { x: 0.5, y: 1.15, w: 5.2, h: 3.55, chartColors: [HEX.accent2], lineSize: 3, lineDataSymbolSize: 9,
       showValue: true, dataLabelPosition: "t", dataLabelFormatCode: "0\"%\"", valAxisMinVal: 0, valAxisMaxVal: 40,
@@ -274,12 +324,12 @@ addSection("Simple setup and changes");
     ["Learning rate / step size: how far each fitting step moves the numbers. Too small: blobs barely move. Too large: they overshoot.",
      "F1: one number combining 'how many real nuclei were found' and 'how many detections were real'; 1.0 is perfect.",
      "Moved to another nucleus (migration): the nearest nucleus of a blob changed between start and end."],
-    ["Does that undo step 2? It reframes it: starting points mattered so much because blobs could not move. With a suitable step size, a random start reaches the same F1."]);
+    ["Does that undo Steps 1 and 4? It reframes them: starting points mattered so much because blobs could not move. With a suitable step size, a random start reaches the same F1."]);
 }
 
 // ================================================================ 9. step 4 size cap
 {
-  const s = content("Simple setup and changes", "Step 4 · Faint nuclei: cap the blob size");
+  const s = content("Simple setup and changes", "Step 6 · Faint nuclei: cap the blob size");
   s.addImage({ path: FIG("size_cap.png"), x: 0.5, y: 1.2, w: 5.2, h: 2.6, objectName: "size-cap" });
   txt(s, "Green: nucleus found  ·  red: missed", { x: 0.5, y: 3.9, w: 5.2, h: 0.3, fontSize: 11, color: C.accent5 });
   steps(s, [
@@ -299,20 +349,22 @@ addSection("Simple setup and changes");
 addSection("Results and validation");
 {
   const s = content("Results and validation", "From the simple setup to the final recipe");
-  const head = ["Change", "Measured on", "Before", "After"].map((t) => ({ text: t, options: { bold: true, color: HEX.lt1, fill: { color: HEX.dk2 } } }));
+  const head = ["Change", "By", "Measured on", "Before", "After"].map((t) => ({ text: t, options: { bold: true, color: HEX.lt1, fill: { color: HEX.dk2 } } }));
   const body = [
-    ["Stretch + rotate", "PSNR, 15 fits", "22.3 dB", "25.5 dB"],
-    ["One start per nucleus", "nuclei found, 110", "52%", "71%"],
-    ["Bigger position steps", "F1, random starts", "0.64", "0.78"],
-    ["Size cap", "faint nuclei found, 31", "13", "19"],
-  ].map((r) => r.map((t, j) => ({ text: t, options: { bold: j === 3, color: j === 3 ? HEX.accent1 : HEX.dk1, align: j >= 2 ? "center" : "left" } })));
-  s.addTable([head].concat(body), { x: 0.5, y: 1.25, w: 9.0, colW: [2.9, 2.8, 1.65, 1.65], fontSize: 16, fontFace: "Calibri",
-    rowH: 0.5, border: { type: "solid", pt: 0.5, color: "E5E7EB" }, fill: { color: HEX.lt1 } });
-  txt(s, "Each change measured on its own, against the step before; the numbers are not added together.",
-    { x: 0.5, y: 4.2, w: 9.0, h: 0.5, fontSize: 15, color: C.text2 });
+    ["Start on bright peaks", "Akim", "PSNR, phantom", "32.0 dB", "53.1 dB"],
+    ["Stretched + rotated blobs", "Akim", "PSNR, real data, median", "20.4 dB", "24.0 dB"],
+    ["Repeats of the shape test", "us", "PSNR, 15 fits", "22.3 dB", "25.5 dB"],
+    ["One start per nucleus", "us", "nuclei found, of 110", "52%", "71%"],
+    ["Bigger position steps", "us", "F1, random starts", "0.64", "0.78"],
+    ["Size cap", "us", "faint nuclei found, of 31", "13", "19"],
+  ].map((r) => r.map((t, j) => ({ text: t, options: { bold: j === 4, color: j === 4 ? HEX.accent1 : HEX.dk1, align: j >= 3 ? "center" : "left" } })));
+  s.addTable([head].concat(body), { x: 0.5, y: 1.15, w: 9.0, colW: [2.75, 0.75, 2.6, 1.45, 1.45], fontSize: 15, fontFace: "Calibri",
+    rowH: 0.43, border: { type: "solid", pt: 0.5, color: "E5E7EB" }, fill: { color: HEX.lt1 } });
+  txt(s, "Each change measured on its own, against the version before it; the numbers are not added together.",
+    { x: 0.5, y: 4.35, w: 9.0, h: 0.45, fontSize: 15, color: C.text2 });
   notes(s,
-    "Here are the four changes side by side, each compared with the version just before it. I want to be clear that these were measured one at a time, on Tribolium, so you cannot add them up into one overall improvement. Together they turn a fit that merely looks right into one where the nuclei are found much more reliably.",
-    ["Naive / simple setup: round blobs, starts on the brightest peaks, default step size, no cap."],
+    "Here are all six changes side by side, two by Akim and four by us, each compared with the version just before it. I want to be clear that these were measured one at a time, on different data and with different numbers of repeats, so you cannot add them up into one overall improvement. Together they turn a fit that merely looks right into one where the nuclei are found much more reliably.",
+    ["Naive / simple setup: round blobs with random starting positions, default step size, no cap."],
     ["Why not one combined number? Each experiment used a different number of regions, seeds and references; combining them would hide that."]);
 }
 
