@@ -14,3 +14,5 @@ runs 2/
 runs/colleague_full_volume.npy
 .claude/settings.local.json
 ~$*
+presentation/node_modules/
+presentation/package-lock.json
