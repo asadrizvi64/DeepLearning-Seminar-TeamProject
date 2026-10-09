@@ -1,0 +1,98 @@
+[
+  {
+    "name": "aprim-e0.1",
+    "rel_error": 0.1,
+    "lossy_particles": false,
+    "particles": 5147173,
+    "computational_ratio": 2.464918121073451,
+    "bytes": 4505116,
+    "ratio": 2.816211613641025,
+    "convert_s": 0.7660303115844727,
+    "max_abs_err": 177.0,
+    "mean_abs_err": 1.9811006784439087
+  },
+  {
+    "name": "aprimq-e0.1",
+    "rel_error": 0.1,
+    "lossy_particles": true,
+    "particles": 5147173,
+    "computational_ratio": 2.464918121073451,
+    "bytes": 3178009,
+    "ratio": 3.9922353901452134,
+    "convert_s": 0.7660303115844727,
+    "max_abs_err": 176.0,
+    "mean_abs_err": 3.0449953079223633
+  },
+  {
+    "name": "aprim-e0.2",
+    "rel_error": 0.2,
+    "lossy_particles": false,
+    "particles": 3926336,
+    "computational_ratio": 3.231348514238211,
+    "bytes": 3629140,
+    "ratio": 3.495968741905796,
+    "convert_s": 1.4543919563293457,
+    "max_abs_err": 179.0,
+    "mean_abs_err": 4.296422958374023
+  },
+  {
+    "name": "aprimq-e0.2",
+    "rel_error": 0.2,
+    "lossy_particles": true,
+    "particles": 3926336,
+    "computational_ratio": 3.231348514238211,
+    "bytes": 2614362,
+    "ratio": 4.852946914008083,
+    "convert_s": 1.4543919563293457,
+    "max_abs_err": 180.0,
+    "mean_abs_err": 5.178548336029053
+  },
+  {
+    "name": "aprim-e0.4",
+    "rel_error": 0.4,
+    "lossy_particles": false,
+    "particles": 1469847,
+    "computational_ratio": 8.631755550067457,
+    "bytes": 1248968,
+    "ratio": 10.158274671568847,
+    "convert_s": 1.0475821495056152,
+    "max_abs_err": 183.0,
+    "mean_abs_err": 9.413106918334961
+  },
+  {
+    "name": "aprimq-e0.4",
+    "rel_error": 0.4,
+    "lossy_particles": true,
+    "particles": 1469847,
+    "computational_ratio": 8.631755550067457,
+    "bytes": 910759,
+    "ratio": 13.930534861582482,
+    "convert_s": 1.0475821495056152,
+    "max_abs_err": 183.0,
+    "mean_abs_err": 9.91446590423584
+  },
+  {
+    "name": "aprim-e0.8",
+    "rel_error": 0.8,
+    "lossy_particles": false,
+    "particles": 340178,
+    "computational_ratio": 37.29623902780309,
+    "bytes": 310087,
+    "ratio": 40.915485009045845,
+    "convert_s": 0.7300975322723389,
+    "max_abs_err": 191.0,
+    "mean_abs_err": 11.060446739196777
+  },
+  {
+    "name": "aprimq-e0.8",
+    "rel_error": 0.8,
+    "lossy_particles": true,
+    "particles": 340178,
+    "computational_ratio": 37.29623902780309,
+    "bytes": 226266,
+    "ratio": 56.07276391503805,
+    "convert_s": 0.7300975322723389,
+    "max_abs_err": 191.0,
+    "mean_abs_err": 11.481850624084473
+  }
+]

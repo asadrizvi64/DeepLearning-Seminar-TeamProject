@@ -1,0 +1,98 @@
+[
+  {
+    "name": "apr-e0.05",
+    "rel_error": 0.05,
+    "lossy_particles": false,
+    "particles": 1805625,
+    "computational_ratio": 7.02657528556594,
+    "bytes": 1747212,
+    "ratio": 7.261488588677276,
+    "convert_s": 0.9444735050201416,
+    "max_abs_err": 179.0,
+    "mean_abs_err": 8.153303146362305
+  },
+  {
+    "name": "aprq-e0.05",
+    "rel_error": 0.05,
+    "lossy_particles": true,
+    "particles": 1805625,
+    "computational_ratio": 7.02657528556594,
+    "bytes": 1258102,
+    "ratio": 10.084524148280504,
+    "convert_s": 0.9444735050201416,
+    "max_abs_err": 180.0,
+    "mean_abs_err": 8.740645408630371
+  },
+  {
+    "name": "apr-e0.1",
+    "rel_error": 0.1,
+    "lossy_particles": false,
+    "particles": 503973,
+    "computational_ratio": 25.174681977010675,
+    "bytes": 501711,
+    "ratio": 25.288183834916914,
+    "convert_s": 0.7947802543640137,
+    "max_abs_err": 188.0,
+    "mean_abs_err": 10.669645309448242
+  },
+  {
+    "name": "aprq-e0.1",
+    "rel_error": 0.1,
+    "lossy_particles": true,
+    "particles": 503973,
+    "computational_ratio": 25.174681977010675,
+    "bytes": 359057,
+    "ratio": 35.33522532634095,
+    "convert_s": 0.7947802543640137,
+    "max_abs_err": 190.0,
+    "mean_abs_err": 11.114495277404785
+  },
+  {
+    "name": "apr-e0.2",
+    "rel_error": 0.2,
+    "lossy_particles": false,
+    "particles": 124936,
+    "computational_ratio": 101.55087404751232,
+    "bytes": 129752,
+    "ratio": 97.78161415623651,
+    "convert_s": 0.8018515110015869,
+    "max_abs_err": 191.0,
+    "mean_abs_err": 11.755331039428711
+  },
+  {
+    "name": "aprq-e0.2",
+    "rel_error": 0.2,
+    "lossy_particles": true,
+    "particles": 124936,
+    "computational_ratio": 101.55087404751232,
+    "bytes": 92833,
+    "ratio": 136.66864153910785,
+    "convert_s": 0.8018515110015869,
+    "max_abs_err": 191.0,
+    "mean_abs_err": 12.209216117858887
+  },
+  {
+    "name": "apr-e0.4",
+    "rel_error": 0.4,
+    "lossy_particles": false,
+    "particles": 28585,
+    "computational_ratio": 443.8467727829281,
+    "bytes": 41282,
+    "ratio": 307.33394699869194,
+    "convert_s": 0.6652190685272217,
+    "max_abs_err": 199.0,
+    "mean_abs_err": 13.465503692626953
+  },
+  {
+    "name": "aprq-e0.4",
+    "rel_error": 0.4,
+    "lossy_particles": true,
+    "particles": 28585,
+    "computational_ratio": 443.8467727829281,
+    "bytes": 32980,
+    "ratio": 384.698605215282,
+    "convert_s": 0.6652190685272217,
+    "max_abs_err": 200.0,
+    "mean_abs_err": 13.977840423583984
+  }
+]

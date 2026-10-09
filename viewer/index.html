@@ -26,7 +26,8 @@
   <div class="row">
     <input id="file" type="file" accept=".splat" multiple/>
     <div class="hint">Load one <code>.splat</code>, or several frames (named
-      t000.splat, t001.splat&hellip;) for 3D+t scrubbing.</div>
+      t000.splat, t001.splat&hellip;) for 3D+t scrubbing. Frames switch discretely;
+      there is no interpolation between them.</div>
   </div>
   <div class="row" id="frameRow" style="display:none">
     <label>frame <span id="frameLbl">0</span></label>
@@ -35,6 +36,10 @@
   <div class="row">
     <label>point size <span id="szLbl">1.0</span></label>
     <input id="size" type="range" min="0.2" max="5" value="1" step="0.1"/>
+  </div>
+  <div class="row">
+    <label>hide splats fainter than <span id="thrLbl">0.00</span></label>
+    <input id="thr" type="range" min="0" max="0.9" value="0" step="0.01"/>
   </div>
   <div class="hint" id="stat">Drag a .splat here, or use the picker. Drag to orbit, scroll to zoom.</div>
 </div>
@@ -46,7 +51,7 @@
 const SP = 32; // bytes per splat: pos[3]f32, scale[3]f32, rgba[4]u8, rot[4]u8
 let renderer, scene, camera, controls, cloud = null;
 let frames = [];          // [{name, geometry}]
-let curFrame = 0, ptSize = 1.0;
+let curFrame = 0, ptSize = 1.0, minAlpha = 0.0;
 
 function init(){
   renderer = new THREE.WebGLRenderer({canvas:document.getElementById('c'), antialias:true});
@@ -80,35 +85,37 @@ const _VS = `
   void main(){
     vCol = splatColor;
     vec4 mv = modelViewMatrix * vec4(position,1.0);
-    // world-space scale → screen pixels, min 3px so tiny Gaussians stay visible
-    gl_PointSize = max(3.0, splatSize * uScale * 400.0 / -mv.z);
+    // world-space scale → screen pixels, min 3px so tiny Gaussians stay visible,
+    // max 96px so a few very broad background Gaussians do not cover the view
+    gl_PointSize = clamp(splatSize * uScale * 400.0 / -mv.z, 3.0, 96.0);
     gl_Position = projectionMatrix * mv;
   }
 `;
 // Fragment shader: Gaussian radial falloff → soft blob, not hard circle
 const _FS = `
   varying vec4 vCol;
+  uniform float uMinAlpha;
   void main(){
     float d = length(gl_PointCoord - vec2(0.5));
-    if(d > 0.5) discard;
+    if(d > 0.5 || vCol.a < uMinAlpha) discard;   // hide faint (background) splats
     float alpha = exp(-d*d*10.0) * vCol.a * 2.5;  // *2.5 brightens faint grayscale
     gl_FragColor = vec4(vCol.rgb * 1.8, alpha);    // boost grey nuclei on dark bg
   }
 `;
 
-function parseSplat(buf){
+// zScale stretches z for display (anisotropic voxels: z step / xy pixel size)
+function parseSplat(buf, zScale){
   const n = Math.floor(buf.byteLength / SP);
   const dv = new DataView(buf);
   const pos = new Float32Array(n*3);
   const col = new Float32Array(n*4);   // rgba
   const sz  = new Float32Array(n);     // scale magnitude per Gaussian
-  let cx=0,cy=0,cz=0;
   for(let i=0;i<n;i++){
     const o=i*SP;
-    const x=dv.getFloat32(o,true), y=dv.getFloat32(o+4,true), z=dv.getFloat32(o+8,true);
-    pos[i*3]=x; pos[i*3+1]=y; pos[i*3+2]=z; cx+=x; cy+=y; cz+=z;
+    pos[i*3]=dv.getFloat32(o,true); pos[i*3+1]=dv.getFloat32(o+4,true);
+    pos[i*3+2]=dv.getFloat32(o+8,true)*zScale;
     // bytes 12-23: 3×float32 scale — use RMS magnitude
-    const sx=dv.getFloat32(o+12,true), sy=dv.getFloat32(o+16,true), scz=dv.getFloat32(o+20,true);
+    const sx=dv.getFloat32(o+12,true), sy=dv.getFloat32(o+16,true), scz=dv.getFloat32(o+20,true)*zScale;
     sz[i] = Math.sqrt((sx*sx+sy*sy+scz*scz)/3);
     // bytes 24-27: rgba uint8
     col[i*4  ]=dv.getUint8(o+24)/255;
@@ -116,21 +123,30 @@ function parseSplat(buf){
     col[i*4+2]=dv.getUint8(o+26)/255;
     col[i*4+3]=dv.getUint8(o+27)/255;
   }
-  cx/=n; cy/=n; cz/=n;
+  return {n, pos, col, sz};
+}
+
+// One centre and radius for all frames, so motion between frames is not normalised away
+function toGeometries(parsed){
+  let cx=0,cy=0,cz=0,m=0;
+  for(const p of parsed) for(let i=0;i<p.n;i++){cx+=p.pos[i*3]; cy+=p.pos[i*3+1]; cz+=p.pos[i*3+2]; m++;}
+  cx/=m; cy/=m; cz/=m;
   let r=0;
-  for(let i=0;i<n;i++){const dx=pos[i*3]-cx,dy=pos[i*3+1]-cy,dz=pos[i*3+2]-cz;
-    r=Math.max(r,Math.hypot(dx,dy,dz));}
+  for(const p of parsed) for(let i=0;i<p.n;i++)
+    r=Math.max(r,Math.hypot(p.pos[i*3]-cx,p.pos[i*3+1]-cy,p.pos[i*3+2]-cz));
   r=r||1;
-  for(let i=0;i<n;i++){
-    pos[i*3]=(pos[i*3]-cx)/r; pos[i*3+1]=(pos[i*3+1]-cy)/r; pos[i*3+2]=(pos[i*3+2]-cz)/r;
-    sz[i]/=r;   // scale to same world-unit space as positions
-  }
-  const geo=new THREE.BufferGeometry();
-  geo.setAttribute('position',  new THREE.BufferAttribute(pos,3));
-  geo.setAttribute('splatColor',new THREE.BufferAttribute(col,4));
-  geo.setAttribute('splatSize', new THREE.BufferAttribute(sz,1));
-  geo.userData.count=n;
-  return geo;
+  return parsed.map(p=>{
+    for(let i=0;i<p.n;i++){
+      p.pos[i*3]=(p.pos[i*3]-cx)/r; p.pos[i*3+1]=(p.pos[i*3+1]-cy)/r; p.pos[i*3+2]=(p.pos[i*3+2]-cz)/r;
+      p.sz[i]/=r;   // scale to same world-unit space as positions
+    }
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',  new THREE.BufferAttribute(p.pos,3));
+    geo.setAttribute('splatColor',new THREE.BufferAttribute(p.col,4));
+    geo.setAttribute('splatSize', new THREE.BufferAttribute(p.sz,1));
+    geo.userData.count=p.n;
+    return geo;
+  });
 }
 
 function showFrame(i){
@@ -138,7 +154,7 @@ function showFrame(i){
   curFrame=Math.max(0,Math.min(frames.length-1,i));
   if(cloud) scene.remove(cloud);
   const mat=new THREE.ShaderMaterial({
-    uniforms:{uScale:{value:ptSize}},
+    uniforms:{uScale:{value:ptSize}, uMinAlpha:{value:minAlpha}},
     vertexShader:_VS, fragmentShader:_FS,
     transparent:true, depthWrite:false, blending:THREE.AdditiveBlending
   });
@@ -149,11 +165,34 @@ function showFrame(i){
     `${frames[curFrame].name}: ${frames[curFrame].geometry.userData.count.toLocaleString()} splats`;
 }
 
+const params = new URLSearchParams(location.search);
+const zScale = parseFloat(params.get('zscale')) || 1.0;
+// start from the URL (or defaults), not from slider values the browser restored
+minAlpha = parseFloat(params.get('thr')) || 0.0;
+ptSize = parseFloat(params.get('size')) || 1.0;
+document.getElementById('thr').value = minAlpha;
+document.getElementById('thrLbl').textContent = minAlpha.toFixed(2);
+document.getElementById('size').value = ptSize;
+document.getElementById('szLbl').textContent = ptSize.toFixed(1);
+
 async function loadFiles(fileList){
   const files = [...fileList].filter(f=>f.name.endsWith('.splat')).sort((a,b)=>a.name.localeCompare(b.name));
   if(!files.length) return;
-  frames = [];
-  for(const f of files){ frames.push({name:f.name, geometry:parseSplat(await f.arrayBuffer())}); }
+  const bufs = [];
+  for(const f of files) bufs.push(await f.arrayBuffer());
+  showLoaded(files.map(f=>f.name), bufs);
+}
+
+// ?files=a.splat,b.splat&zscale=4.33 loads files served next to this page
+async function loadUrls(urls){
+  const bufs = await Promise.all(urls.map(u=>fetch(u).then(r=>{
+    if(!r.ok) throw new Error(`${u}: HTTP ${r.status}`); return r.arrayBuffer(); })));
+  showLoaded(urls.map(u=>u.split('/').pop()), bufs);
+}
+
+function showLoaded(names, bufs){
+  const geos = toGeometries(bufs.map(b=>parseSplat(b, zScale)));
+  frames = names.map((name,i)=>({name, geometry:geos[i]}));
   const fr = document.getElementById('frame');
   fr.max = frames.length-1; fr.value = 0;
   document.getElementById('frameRow').style.display = frames.length>1 ? 'block':'none';
@@ -168,12 +207,18 @@ document.getElementById('file').addEventListener('change', e=>loadFiles(e.target
 document.getElementById('frame').addEventListener('input', e=>showFrame(+e.target.value));
 document.getElementById('size').addEventListener('input', e=>{
   ptSize=+e.target.value; document.getElementById('szLbl').textContent=ptSize.toFixed(1); showFrame(curFrame); });
+document.getElementById('thr').addEventListener('input', e=>{
+  minAlpha=+e.target.value; document.getElementById('thrLbl').textContent=minAlpha.toFixed(2); showFrame(curFrame); });
 const drop=document.getElementById('drop');
 addEventListener('dragover', e=>{e.preventDefault(); drop.style.display='flex';});
 drop.addEventListener('dragleave', ()=>drop.style.display='none');
 addEventListener('drop', e=>{e.preventDefault(); drop.style.display='none'; loadFiles(e.dataTransfer.files);});
 
 init();
+if(params.get('files')){
+  loadUrls(params.get('files').split(',')).catch(e=>{
+    document.getElementById('stat').textContent = 'Could not load: ' + e.message; });
+}
 </script>
 </body>
 </html>

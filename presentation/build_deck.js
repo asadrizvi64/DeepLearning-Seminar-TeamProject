@@ -147,6 +147,35 @@ addSection("Problem and data");
     ["Where do the numbers come from? 37 million = 71 x 1024 x 512 voxels (Tribolium frame). 2.5 GB = 195 frames x 12.7 MB (C. elegans, 35 x 512 x 708 voxels, 8-bit)."]);
 }
 
+// ================================================================ 2b. brief and scope
+{
+  const s = content("Problem and data", "The brief: four goals, and what we delivered");
+  const goals = [
+    ["Fit Gaussians to one volume", "quality vs number of blobs, file size, fit time", "Done, extended", C.accent3],
+    ["Export and browser viewer", ".ply / .splat files, inspect in the browser", "Done, basic viewer", C.accent3],
+    ["Time series", "per-frame blobs vs 4D blobs: storage, smoothness", "Partial: synthetic data", C.accent1],
+    ["Time-series player", "scrub through development in the browser", "Partial: frame slider", C.accent1],
+  ];
+  goals.forEach(([a, b, status, col], i) => {
+    const y = 1.12 + i * 0.8;
+    s.addShape(pres.shapes.OVAL, { x: 0.5, y: y + 0.08, w: 0.5, h: 0.5, fill: { color: C.accent2 }, line: { color: C.accent2 }, objectName: `goal-num-${i}` });
+    txt(s, String(i + 1), { x: 0.5, y: y + 0.08, w: 0.5, h: 0.5, fontSize: 16, bold: true, color: C.background1, align: "center", valign: "middle" });
+    txt(s, [{ text: a, options: { bold: true, breakLine: true } }, { text: b, options: { color: HEX.dk2, fontSize: 14 } }],
+      { x: 1.2, y, w: 5.3, h: 0.7, fontSize: 16 });
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 6.8, y: y + 0.1, w: 2.7, h: 0.45, rectRadius: 0.08, fill: { color: col }, line: { color: col }, objectName: `goal-status-${i}` });
+    txt(s, status, { x: 6.8, y: y + 0.1, w: 2.7, h: 0.45, fontSize: 14, bold: true, color: C.background1, align: "center", valign: "middle" });
+  });
+  txt(s, "Added with our supervisor: do Gaussian blobs keep the nuclei, compared with standard compression at the same file size?",
+    { x: 0.5, y: 4.4, w: 9.0, h: 0.6, fontSize: 15, color: C.text2 });
+  notes(s,
+    "The project brief had four goals. First, fit Gaussian blobs to one microscope volume and study how quality depends on the number of blobs, the file size and the fitting time. We did that in depth, and went further: we checked whether the nuclei survive. Second, export the blobs to standard files and look at them in a browser: done, with our own simple viewer. Third, extend the blobs to time series, comparing one set of blobs per frame with 4D blobs: we built all three versions, but compared them only on synthetic data. Fourth, a player that lets biologists scrub through time: our viewer has a frame slider, but it switches between frames and does not interpolate. In the second half, together with our supervisor, we added a question the brief did not ask: compared with standard compression at the same file size, do Gaussian blobs keep the nuclei?",
+    ["Brief: the project description from the chair, with the four goals.",
+     ".ply / .splat: standard file formats for Gaussian blobs that browser viewers can open.",
+     "4D blobs: blobs that also have a position and extent in time, so one set covers the whole recording."],
+    ["Why is the time series only partial? The real-data run we had used a crop with a bug, so we can only report synthetic results. See the time-series slide.",
+     "Why not GPU memory? Our own fits ran on a laptop CPU; we did not measure GPU memory."]);
+}
+
 // ================================================================ 3. data
 {
   const s = content("Problem and data", "Three real embryo recordings");
@@ -445,6 +474,65 @@ addSection("Results and validation");
      "Why 16-18? 16 with LoG scales fixed in advance (1.5-3 micrometres); 18 with a single 2-micrometre scale chosen after seeing results.",
      "And in the top 200? There the best fit (uniform sampling, 22.7) and LoG (22) are level, within one nucleus. The filter is clearly better only in the top 100.",
      "Are fits repeatable? Our own fits: seed spread at most 0.13 dB (Step 5). Luxar, used on the next slides: three repeated fits of one frame differed by at most 2.1-3.7 percentage points of nuclei kept, depending on the detector."]);
+}
+
+// ================================================================ 11b. export and viewer (brief goal 2)
+addSection("Export, viewer and time series");
+{
+  const s = content("Export, viewer and time series", "Export and a browser viewer");
+  // real screen recording of viewer/index.html (presentation/make_viewer_figures.py)
+  s.addImage({ path: FIG("viewer_rotate.gif"), x: 0.5, y: 1.15, w: 4.0, h: 3.23, objectName: "viewer-rotate" });
+  txt(s, "Recording of our browser viewer, rotating the Drosophila fit (500 blobs; curved sheet = embryo surface)",
+    { x: 0.5, y: 4.45, w: 4.0, h: 0.5, fontSize: 11, color: C.accent5 });
+  steps(s, [
+    ["WHAT WE BUILT", "Export to .ply and .splat (32 bytes per blob); a browser viewer to rotate, zoom and filter"],
+    ["CHECK", "Positions and sizes come back exactly; brightness is mapped for display only"],
+    ["SIZE / LIMIT", "500 blobs: 16 kB vs 2.1 MB raw crop. Blobs drawn as round dots, without orientation"],
+  ], 4.75, 4.75);
+  notes(s,
+    "The second goal of the brief: export and look at the result. We write the blobs into the two standard formats, .ply and .splat; a .splat file needs 32 bytes per blob, so this Drosophila fit with 500 blobs is 16 kilobytes, against 2.1 megabytes for the raw crop. Reading the file back returns the positions and sizes exactly; brightness is only mapped to grey and transparency for display, so these files are for looking, not for measuring. The recording shows our own browser viewer: you can rotate, zoom and hide faint blobs, which are mostly background. The curved sheet is the surface of the embryo, the bright dots are nuclei. An honest limit: our viewer draws each blob as a round dot, without its orientation, and we did not test the files in SuperSplat for this talk.",
+    [".ply: a standard 3D point file; for Gaussian splatting it stores 17 numbers per blob.",
+     ".splat: a compact format from the antimatter15 web viewer, 32 bytes per blob.",
+     "Round trip: write the file, read it back, and check that nothing changed.",
+     "Point sprite: a flat round dot facing the camera, used here to draw each blob."],
+    ["Can biologists open it elsewhere? The .ply follows the Gaussian-splatting layout used by SuperSplat; we have not tested it there for this talk.",
+     "Why hide faint blobs? Most blobs model the dim background between nuclei; hiding them makes the nuclei visible.",
+     "Is the 131x smaller file a fair compression ratio? No: brightness is stored only for display, so it cannot be compared with the codecs later in the talk."]);
+}
+
+// ================================================================ 11c. time series and playback (brief goals 3-4)
+{
+  const s = content("Export, viewer and time series", "Time series: three ways, on synthetic data");
+  const T = require(FIG("temporal_summary.json"));   // scripts/temporal_summary.py
+  const R = T.rows, f1 = (v) => v[0].toFixed(1);
+  s.addImage({ path: FIG("viewer_timeseries.gif"), x: 0.5, y: 1.15, w: 3.6, h: 2.91, objectName: "viewer-timeseries" });
+  txt(s, "Recording: frame slider in our viewer (synthetic, 6 frames); frames switch, no interpolation",
+    { x: 0.5, y: 4.12, w: 3.6, h: 0.5, fontSize: 11, color: C.accent5 });
+  const head = ["Same storage (~13,200 numbers)", "Fit frames", "Held-out frames"].map((t) => ({ text: t, options: { bold: true, color: HEX.lt1, fill: { color: HEX.dk2 } } }));
+  const body = [
+    ["One blob set per frame", f1(R.shared_identity.fit), `${f1(R.shared_identity.held)} (nearest)`],
+    ["  … blend of 2 frames", "", `${f1(R.shared_identity.held_xfade)}`],
+    ["4D blobs (fade in time)", f1(R.native_4d.fit), f1(R.native_4d.held)],
+    ["Moving blobs (deformation)", f1(R.deformation.fit), f1(R.deformation.held)],
+  ].map((r) => r.map((t, j) => ({ text: t, options: { color: HEX.dk1, align: j ? "center" : "left" } })));
+  s.addTable([head].concat(body), { x: 4.4, y: 1.15, w: 5.1, colW: [2.5, 1.0, 1.6], fontSize: 13, fontFace: "Calibri",
+    rowH: 0.36, border: { type: "solid", pt: 0.5, color: "E5E7EB" }, fill: { color: HEX.lt1 } });
+  txt(s, `PSNR in dB, mean of ${T.seeds.length} seeds. Held-out frames were never used for fitting.`,
+    { x: 4.4, y: 3.2, w: 5.1, h: 0.3, fontSize: 11, color: C.accent5 });
+  card(s, 4.4, 3.6, 5.1, 1.4, "temporal-takeaway");
+  txt(s, [{ text: "The simplest option won: ", options: { bold: true } },
+    { text: `blending two neighbouring frames (${f1(R.shared_identity.held_xfade)} dB) beat the 4D models between frames. Our 4D fits were under-optimised, and the data are synthetic.` }],
+  { x: 4.6, y: 3.7, w: 4.7, h: 1.2, fontSize: 14, color: C.text1 });
+  notes(s,
+    `Goals three and four of the brief: time series. We built three ways to store a recording with blobs: one set of blobs per frame, where each set starts from the previous one; 4D blobs, which also have an extent in time and fade in and out; and blobs that move along smooth paths. We compared them only on synthetic data: eight moving blobs, one of which divides. To be fair, all three store the same amount of numbers, and we test them on frames that were never used for fitting, half-way between the fitted ones. The per-frame sets reproduce their own frames best, about ${f1(R.shared_identity.fit)} dB. Between frames, the simplest trick wins: just blend the two neighbouring frames, ${f1(R.shared_identity.held_xfade)} dB, better than the 4D models at about 16 to 20 dB. To be honest, our 4D fits got worse with more blobs, so their optimisation, which we did not tune, held them back. The recording on the left is our viewer playing a time series: the slider switches between frames; it does not interpolate.`,
+    ["Shared identity: one set of blobs per time point, each started from the previous one, so blob number i keeps describing the same thing.",
+     "4D blob: a blob that also has a centre and an extent in time; it fades in and out but does not move.",
+     "Deformation: one set of blobs that move along smooth paths in time.",
+     "Held-out frame: a time point that was not used for fitting; scoring on it tests what happens between the frames we have.",
+     "Cross-fade: showing a 50/50 mix of the two neighbouring frames."],
+    ["Why only synthetic data? Our real Drosophila time-series run used a crop with a bug (the empty inside of the embryo), so we do not report it.",
+     "Why the same storage? An earlier comparison gave the per-frame version 3.4 times more numbers, which made it look far better than it is.",
+     "Can the viewer play the 4D blobs continuously? No. It plays one file per frame; the .splat format has no time axis."]);
 }
 
 // ================================================================ 12. SOTA setup

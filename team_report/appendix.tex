@@ -55,6 +55,17 @@
   \item[Survival] Share of the raw volume's 100 strongest LoG detections still found after
     compression; needs no labels.
   \item[Pre-registration] Writing down pass/fail rules before the data they apply to are seen.
+  \item[\texttt{.ply} / \texttt{.splat}] File formats for Gaussian splats: the 3D Gaussian
+    splatting PLY layout (68~bytes per Gaussian) and the compact antimatter15 layout (32~bytes).
+  \item[Point sprite] A flat, round dot that always faces the camera; our viewer draws each
+    Gaussian as one.
+  \item[Shared identity] One set of Gaussians per time point, each fitted starting from the
+    previous one, so that Gaussian $i$ keeps describing the same structure.
+  \item[Native 4D Gaussian] A Gaussian with an extent in time as well as space; it fades in and
+    out around its time centre but does not move.
+  \item[Deformation model] One set of Gaussians whose positions move along a low-order
+    polynomial in time.
+  \item[Held-out frame] A time point not used for fitting, on which a method is scored.
 \end{description}
 
 \section{Evaluation and pipeline bugs found}\label{app:bugs}

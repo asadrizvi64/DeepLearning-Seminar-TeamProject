@@ -1,0 +1,98 @@
+[
+  {
+    "name": "apri-e0.05",
+    "rel_error": 0.05,
+    "lossy_particles": false,
+    "particles": 3603847,
+    "computational_ratio": 3.5205046163169524,
+    "bytes": 3414332,
+    "ratio": 3.7159128051987915,
+    "convert_s": 0.8263106346130371,
+    "max_abs_err": 180.0,
+    "mean_abs_err": 3.6996195316314697
+  },
+  {
+    "name": "apriq-e0.05",
+    "rel_error": 0.05,
+    "lossy_particles": true,
+    "particles": 3603847,
+    "computational_ratio": 3.5205046163169524,
+    "bytes": 2349841,
+    "ratio": 5.399241906154502,
+    "convert_s": 0.8263106346130371,
+    "max_abs_err": 181.0,
+    "mean_abs_err": 4.721401214599609
+  },
+  {
+    "name": "apri-e0.1",
+    "rel_error": 0.1,
+    "lossy_particles": false,
+    "particles": 3576898,
+    "computational_ratio": 3.5470287383090042,
+    "bytes": 3402526,
+    "ratio": 3.7288061869328843,
+    "convert_s": 1.0063371658325195,
+    "max_abs_err": 180.0,
+    "mean_abs_err": 3.7552237510681152
+  },
+  {
+    "name": "apriq-e0.1",
+    "rel_error": 0.1,
+    "lossy_particles": true,
+    "particles": 3576898,
+    "computational_ratio": 3.5470287383090042,
+    "bytes": 2345564,
+    "ratio": 5.409087110818549,
+    "convert_s": 1.0063371658325195,
+    "max_abs_err": 181.0,
+    "mean_abs_err": 4.772789478302002
+  },
+  {
+    "name": "apri-e0.2",
+    "rel_error": 0.2,
+    "lossy_particles": false,
+    "particles": 2921721,
+    "computational_ratio": 4.342426946310068,
+    "bytes": 2877239,
+    "ratio": 4.4095606934286655,
+    "convert_s": 0.8029980659484863,
+    "max_abs_err": 180.0,
+    "mean_abs_err": 5.211329936981201
+  },
+  {
+    "name": "apriq-e0.2",
+    "rel_error": 0.2,
+    "lossy_particles": true,
+    "particles": 2921721,
+    "computational_ratio": 4.342426946310068,
+    "bytes": 2014635,
+    "ratio": 6.297597331526554,
+    "convert_s": 0.8029980659484863,
+    "max_abs_err": 181.0,
+    "mean_abs_err": 6.1272735595703125
+  },
+  {
+    "name": "apri-e0.4",
+    "rel_error": 0.4,
+    "lossy_particles": false,
+    "particles": 854002,
+    "computational_ratio": 14.856358650213934,
+    "bytes": 835782,
+    "ratio": 15.180226422679599,
+    "convert_s": 0.7561638355255127,
+    "max_abs_err": 196.0,
+    "mean_abs_err": 9.848580360412598
+  },
+  {
+    "name": "apriq-e0.4",
+    "rel_error": 0.4,
+    "lossy_particles": true,
+    "particles": 854002,
+    "computational_ratio": 14.856358650213934,
+    "bytes": 586520,
+    "ratio": 21.631589715610723,
+    "convert_s": 0.7561638355255127,
+    "max_abs_err": 196.0,
+    "mean_abs_err": 10.452308654785156
+  }
+]

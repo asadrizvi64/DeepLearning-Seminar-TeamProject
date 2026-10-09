@@ -157,6 +157,51 @@ which PSNR cannot reveal.
   \label{tab:summary}
 \end{table}
 
+\subsection{Scope: the project brief and what was delivered}\label{sec:scope}
+
+The project brief set four goals: (1)~fit Gaussians to a single microscopy volume and study
+quality against the number of Gaussians, file size, fitting time and GPU memory; (2)~export
+the fit to \texttt{.ply}/\texttt{.splat} and inspect it in a browser; (3)~extend the
+representation to time series, comparing per-frame Gaussian sets with shared identity against
+4D Gaussians on storage, smoothness and frame-to-frame consistency; and (4)~play the time
+series back in a browser. \Cref{tab:scope} maps each goal to the work in this report. Goal~1
+was covered in depth and extended to object-level evaluation; Goals~2--4 were implemented in
+a basic form. After a meeting with the supervisor, the second half of the project turned to
+an object-level comparison of Gaussian compression with standard codecs (\cref{sec:sota}),
+and the next phase will turn to compression that biologists use (\cref{sec:discussion}).
+
+\begin{table}[tb]
+  \centering\small
+  \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.7cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{1.5cm}@{}}
+    \toprule
+    Goal of the brief & What was done & Where \\
+    \midrule
+    1.~Static fitting: quality vs.\ number of Gaussians, file size, fit time, GPU memory
+      & Done and extended: fitting experiments, object-level evaluation, human labels. Our fitter
+        is plain PyTorch with voxel queries, not \texttt{gsplat}: its render-and-compare
+        objective was biased for volumes (Step~0). GPU memory was not measured.
+      & \cref{sec:repr,sec:steps,sec:validation} \\
+    2.~Export to \texttt{.ply}/\texttt{.splat}, browser inspection
+      & Done: exporter with exact geometry round trip; own browser viewer. Opening the files in
+        SuperSplat or antimatter15/splat was not tested for this report.
+      & \cref{sec:export} \\
+    3.~Time series: shared identity vs.\ 4D Gaussians
+      & Partial: three representations implemented and compared on a synthetic phantom at
+        matched storage, with held-out frames; no usable real-data comparison.
+      & \cref{sec:temporal} \\
+    4.~Time-series renderer
+      & Partial: the viewer steps through per-frame sets with a slider (discrete frames); the
+        4D model's continuous time is not played back in the browser.
+      & \cref{sec:temporal} \\
+    Added with the supervisor
+      & Object-level comparison of Gaussian compression with standard codecs at matched size.
+      & \cref{sec:sota} \\
+    \bottomrule
+  \end{tabularx}
+  \caption{The four goals of the project brief and their status.}
+  \label{tab:scope}
+\end{table}
+
 \subsection{Division of work}
 
 The project was carried out by two students. \textbf{Akim Al-Makhdar} built the first fitting pipeline
@@ -175,8 +220,10 @@ representation were shared work.
 \cref{sec:repr} the representation, fitting and evaluation. \Cref{sec:steps} goes from a
 phantom to the final fitting recipe, one change at a time, stating for each change what was
 changed, why it should help, and what it did. \Cref{sec:validation} checks whether the fits
-behave as expected and compares them with naive baselines, and \cref{sec:sota} compares
-Gaussian compression with standard codecs at matched file size. \Cref{sec:discussion}
+behave as expected and compares them with naive baselines. \Cref{sec:export} covers export
+and the browser viewer, \cref{sec:temporal} the time-resolved extension and playback, and
+\cref{sec:sota} compares Gaussian compression with standard codecs at matched file size.
+\Cref{sec:discussion}
 discusses limitations and the next steps. A glossary of technical terms is in
 \cref{app:glossary}.
 
@@ -190,7 +237,8 @@ covariance of each Gaussian. Representing nuclei as Gaussians, or capping their 
 therefore not new on its own; our question concerns Gaussians as a \emph{storage format}.
 
 \paragraph{Gaussian volume representations.} 3D Gaussian splatting~\cite{kerbl2023gaussian}
-renders opaque scenes for a camera by alpha-compositing. It has been adapted to tomographic
+renders opaque scenes for a camera by alpha-compositing; dynamic scenes are modelled by
+Gaussians that move with a learned deformation field~\cite{wu2024fourd}. It has been adapted to tomographic
 reconstruction~\cite{zha2024r2gaussian,li2025threedgr}, to slice-to-volume MRI with closed-form
 point-spread functions~\cite{dannecker2026fast}, and to the compression of microscopy and
 medical volumes~\cite{royer2026luxar,gaussianpile2026,gstoken2026,martin2026fixedbudget}. Luxar
@@ -589,6 +637,37 @@ cap was never run and is not part of the recipe.
   \label{tab:recipe}
 \end{table}
 
+\subsection{Quality, file size and fitting time against the number of Gaussians}\label{sec:cost}
+
+Goal~1 of the brief asks how quality trades against the number of Gaussians, file size,
+fitting time and GPU memory. \Cref{tab:cost} gives one sweep on a $64\times128\times128$
+\emph{Tribolium} crop (stretched and rotated blobs, 1{,}000 iterations, laptop CPU). Held-out
+PSNR barely moved: \SI{0.6}{dB} from 100 to 1{,}000 Gaussians, and slightly lower at 2{,}000,
+while fitting time grew in proportion to the number of Gaussians, because every sampled voxel
+is evaluated against every Gaussian. The fixed 1{,}000 iterations probably under-train the
+largest budgets, as in Step~4. File size is fixed per Gaussian: 32~bytes in \texttt{.splat}
+and 68 in \texttt{.ply} (\cref{sec:export}). GPU memory was not measured: our fits ran on a
+laptop CPU, and the GPU fits of \cref{sec:sota} used Luxar, whose fitting took 17--46~min per
+whole \emph{C.~elegans} frame on an A100.
+
+\begin{table}[tb]
+  \centering\small
+  \begin{tabular}{@{}rrrrr@{}}
+    \toprule
+    Gaussians & Held-out PSNR (dB) & Stored numbers & \texttt{.splat} size (kB) & Fit time (min) \\
+    \midrule
+    100 & 22.5 & 1{,}000 & 3.2 & 1.0 \\
+    250 & 22.7 & 2{,}500 & 8.0 & 2.7 \\
+    500 & 22.9 & 5{,}000 & 16.0 & 5.3 \\
+    1{,}000 & 23.1 & 10{,}000 & 32.0 & 11.9 \\
+    2{,}000 & 22.9 & 20{,}000 & 64.0 & 22.3 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Capacity sweep on one \emph{Tribolium} crop (\texttt{runs/capacity\_tribolium}); the raw
+  crop is \SI{2}{MiB} at 16~bit. Stored numbers count 10 degrees of freedom per Gaussian.}
+  \label{tab:cost}
+\end{table}
+
 % =====================================================================
 \section{Validation: does the fit behave as expected?}\label{sec:validation}
 % =====================================================================
@@ -674,6 +753,139 @@ the comparison with the state of the art in the next section.
   \caption{Other uses of the representation that were tested and lost to a simple baseline.}
   \label{tab:neg}
 \end{table}
+
+% =====================================================================
+\section{Export and browser visualisation}\label{sec:export}
+% =====================================================================
+
+\paragraph{Formats.} A fitted set of Gaussians is written in two standard formats
+(\path{volsplat/export.py}, \path{scripts/export_splat.py}): the PLY layout of 3D Gaussian
+splatting (17 floats, 68~bytes per Gaussian), read by SuperSplat and similar tools, and the
+compact \texttt{.splat} layout of antimatter15/splat (32~bytes per Gaussian: position and
+scales as floats, colour and opacity as 8-bit values, rotation as four 8-bit values).
+Microscopy has no colour, so the fitted brightness of each Gaussian is mapped to a grey value
+and an opacity.
+
+\paragraph{What survives the export.} Re-reading the PLY returned positions and scales exactly
+(maximum error 0 on the \emph{Tribolium} and \emph{Drosophila} fits below). The
+\texttt{.splat} format stores rotations in 8~bits per component, which changed orientations by
+at most \ang{1.6} (median \ang{0.9}). Brightness is a display mapping, normalised to the
+99th percentile, clipped and stored in 8~bits, so the exported files are for viewing, not for
+quantitative analysis. Sizes: the \emph{Drosophila} fit of \cref{sec:validation} (500
+Gaussians) takes \SI{16.0}{kB} as \texttt{.splat} and \SI{34.4}{kB} as \texttt{.ply}, against
+\SI{2.1}{MB} for its 16-bit crop; a 12{,}000-Gaussian fit of a $64\times256\times256$
+\emph{Tribolium} crop takes \SI{384}{kB} and \SI{816}{kB}, against \SI{8.4}{MB}.
+
+\paragraph{Viewer.} We inspect the files in our own browser viewer (\path{viewer/index.html},
+three.js), shown in \cref{fig:viewer}. It loads one or several \texttt{.splat} files by drag
+and drop or from the page address, and supports orbiting, zooming, a point-size control and a
+threshold that hides faint Gaussians, which mostly model background (\cref{sec:mechanism}).
+It draws each Gaussian as a round, soft sprite sized by its average scale; the orientation and
+anisotropy of the Gaussians are not drawn, so it is a point-sprite viewer rather than a full
+splat rasteriser. Anisotropic voxels are corrected for display by stretching $z$
+(\eg $5\times$ for \emph{Drosophila}). For this report we added loading from the page address,
+the $z$ stretch, the threshold and a cap on sprite size, and fixed a bug that centred every
+time point separately (\cref{sec:temporal}). Opening the same files in SuperSplat or
+antimatter15/splat was not tested for this report.
+
+\begin{figure}[tb]
+  \centering
+  \includegraphics[width=\linewidth]{figs/viewer_static.png}
+  \caption{The browser viewer with the \emph{Drosophila} fit of \cref{sec:validation} (500
+  Gaussians, $64\times128\times128$ crop, $z$ stretched $5\times$, Gaussians with display
+  brightness below 0.3 hidden). Left: control panel. Right: three orbit angles of the same
+  fit; the curved sheet is the embryo surface, the bright points its nuclei. Screenshots of
+  the running viewer.}
+  \label{fig:viewer}
+\end{figure}
+
+% =====================================================================
+\section{Time-resolved extension and playback}\label{sec:temporal}
+% =====================================================================
+
+\paragraph{Three representations.} Goal~3 of the brief compares per-frame Gaussian sets with
+shared identity against 4D Gaussians. We implemented three variants
+(\path{volsplat/temporal.py}). \emph{Shared identity} fits one set per time point; the first is
+fitted from scratch and each later one starts from its predecessor, so that Gaussian~$i$ keeps
+describing the same structure. Storage grows with the number of frames, and time is discrete.
+\emph{Native 4D} gives each Gaussian a time centre and a temporal extent (13 numbers instead of
+11); its density is the product of a spatial and a temporal Gaussian, so a Gaussian fades in and
+out but does not move, and motion has to be represented by successive Gaussians.
+\emph{Deformation} keeps one set whose positions follow a quadratic path in time (velocity and
+acceleration, 17 numbers), in the spirit of deformation-based 4D splatting~\cite{wu2024fourd}.
+Both continuous-time variants can be rendered at any $t$.
+
+\paragraph{Data.} All temporal results are on a synthetic 4D phantom: $16\times32\times32$
+voxels and eight Gaussian blobs (widths 2--3 voxels) moving along smooth random paths, one of
+which divides. The motion is small: each blob stays within 1.5~voxels of its mean position,
+less than its own width, while the two daughters of the dividing blob move apart by 1.5~voxels
+per frame. We have no usable
+real-data comparison. The \emph{Drosophila} time-series run in the repository used the crop
+from before the region-of-interest fix (\cref{app:bugs}), so it fitted the empty interior of the
+embryo; a corrected three-frame run on the cluster, described in our progress report, left no
+outputs in the repository. Neither is reported here.
+
+\paragraph{A first comparison, and its two flaws.} Our first comparison gave every variant the
+same 300 Gaussians and found shared identity far ahead (39.3 against 25.9 and \SI{22.8}{dB}
+mean PSNR over four frames). It had two flaws. Shared identity stored $3.4\times$ more numbers
+(13{,}200 against 3{,}900 and 5{,}100), and its ``interpolation'' score rendered the
+continuous-time models half-way between frames but compared the result with a neighbouring
+\emph{training} frame, so it did not measure interpolation at all. We therefore repeated the
+comparison with matched storage and genuinely held-out frames.
+
+\paragraph{Matched storage, held-out frames.} We generated the phantom with seven frames,
+fitted every method on the four even frames only and scored it on the three odd frames it
+never saw (\path{scripts/temporal_matched.py}, three seeds). All methods stored about 13{,}200
+numbers: four per-frame sets of 300 Gaussians, 1{,}015 native-4D Gaussians, or 776 deformation
+Gaussians. Per-frame sets cannot render between frames, so we scored them in two ways: the
+nearest earlier frame, which is what a frame slider shows, and an equal blend of the two
+neighbouring frames. Because more Gaussians made the continuous-time models fit \emph{worse}, we
+also fitted them with 300 Gaussians as a control. \Cref{tab:temporal} gives the results.
+
+\begin{table}[tb]
+  \centering\small
+  \input{generated/temporal_table}
+  \caption{Time-series representations on the synthetic phantom: mean PSNR on the four frames
+  used for fitting and on the three held-out frames between them (mean $\pm$ standard deviation
+  over three seeds). Upper block: matched storage; lower block: the continuous-time models with
+  300 Gaussians.}
+  \label{tab:temporal}
+\end{table}
+
+Per-frame sets reproduced their own frames far better than either continuous-time model
+(\SI{37.5}{dB}, against 18.5 to \SI{23.6}{dB}). Between frames, the simplest option won: an equal
+blend of the two neighbouring per-frame fits reached \SI{22.7}{dB} on the held-out frames,
+against about \SI{20}{dB} for showing the nearest frame and 16.3--\SI{19.7}{dB} for the
+continuous-time models. At matched storage the continuous-time models fitted even their own
+frames worse than with 300 Gaussians (native 4D 18.5 against \SI{23.6}{dB}), so their
+optimisation, not only their representation, limited them; we did not tune it. On smoothness,
+the per-frame Gaussians moved smoothly (mean acceleration 0.15~voxels per frame$^2$), and
+scoring each frame with the previous frame's model gave \SI{16.2}{dB}, which mostly measures
+the motion between frames rather than drift. In the run without interruptions, per-frame sets
+took about 7~minutes on the laptop CPU, deformation 17 and native 4D 25. On this small phantom, then, the extra machinery of 4D Gaussians did not pay
+off; whether it would on real embryos, with larger motion and many divisions, remains open.
+
+\paragraph{Playback.} The viewer of \cref{sec:export} plays a time series as a sequence of
+per-frame \texttt{.splat} files with a frame slider (\cref{fig:timeseries}). Frames switch
+discretely; nothing is interpolated, and the continuous time of the native-4D and deformation
+models is not exported, because \texttt{.splat} has no time axis. Before the fix mentioned in
+\cref{sec:export}, the viewer centred each frame on its own centre of mass, which partly
+removed the motion it was meant to show.
+
+\begin{figure}[tb]
+  \centering
+  \includegraphics[width=\linewidth]{figs/viewer_timeseries.png}
+  \caption{Playback of a synthetic time series (six frames, 400 Gaussians per frame, shared
+  identity) in the browser viewer: control panel with the frame slider, and frames 0, 2, 4 and
+  5. Frame~0 was fitted from scratch and looks denser; later frames start from their
+  predecessor. Screenshots of the running viewer.}
+  \label{fig:timeseries}
+\end{figure}
+
+\paragraph{Limitations.} The phantom is small and synthetic, and real nuclei were never tracked
+with these representations. Native-4D Gaussians cannot move. All variants used learning rates
+from static fitting, including the position rate that Step~7 found to be too small. The cell
+division is handled only implicitly, and there is no standard file format for 4D Gaussians.
 
 % =====================================================================
 \section{Comparison with the state of the art at matched file size}\label{sec:sota}

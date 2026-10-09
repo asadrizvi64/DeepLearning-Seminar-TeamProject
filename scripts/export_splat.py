@@ -34,9 +34,22 @@ def _load_gs(ckpt: dict) -> GaussianSet:
     return gs
 
 
+def _ckpt_from_npz(path) -> dict:
+    """Checkpoint-like dict from the .npz Gaussians saved by rerank_factorial.py."""
+    z = np.load(path)
+    amp = torch.tensor(z['amplitudes'], dtype=torch.float32).clamp_min(1e-6)
+    return {
+        'num_gaussians': len(amp),
+        'positions': torch.tensor(z['positions_xyz'], dtype=torch.float32),
+        'log_scales': torch.log(torch.tensor(z['scales_xyz'], dtype=torch.float32)),
+        'quaternions': torch.tensor(z['quaternions'], dtype=torch.float32),
+        'amp_logits': amp + torch.log(-torch.expm1(-amp)),   # inverse softplus
+    }
+
+
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--checkpoint', required=True)
+    p.add_argument('--checkpoint', required=True, help='final.pt, or a saved Gaussians .npz')
     p.add_argument('--out-dir', default=None)
     p.add_argument('--opacity-gamma', type=float, default=1.0,
                    help='>1 fades faint Gaussians, <1 boosts them, for viewing only')
@@ -45,7 +58,10 @@ def main():
                    help='If given, run the E6 density round-trip check on this grid')
     args = p.parse_args()
 
-    ckpt = torch.load(args.checkpoint, map_location='cpu', weights_only=False)
+    if args.checkpoint.endswith('.npz'):
+        ckpt = _ckpt_from_npz(args.checkpoint)
+    else:
+        ckpt = torch.load(args.checkpoint, map_location='cpu', weights_only=False)
     out = Path(args.out_dir) if args.out_dir else Path(args.checkpoint).parent / 'splat'
     out.mkdir(parents=True, exist_ok=True)
 

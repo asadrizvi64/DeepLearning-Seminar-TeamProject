@@ -36,6 +36,13 @@ framing.
   grayscale + opacity so nuclei show in web viewers. `scripts/preview_splat.py` for
   a no-browser 3D preview; **`viewer/index.html`** is a self-contained WebGL splat
   viewer with a frame slider for 3D+t scrubbing (`python -m http.server`-served).
+  It draws each Gaussian as a round point sprite sized by its mean scale (orientation and
+  anisotropy are not drawn), and frames switch discretely. Load files from the address:
+  `?files=demo/drosophila_crop.splat&zscale=5&thr=0.3` (`zscale` stretches z for anisotropic
+  voxels, `thr` hides faint Gaussians, `size` sets the point size); demo files are in
+  `viewer/demo/`. `.splat` stores rotations in 8 bits (≤ 1.6° error) and brightness as a
+  display value only. `scripts/export_splat.py` also reads the `.npz` Gaussians saved by
+  `scripts/rerank_factorial.py`.
 - **P5** (temporal, 3D+t): **shared-identity + native-4D done; E7 comparison built.**
   `volsplat/temporal.py`: 4D moving-blob phantom with controlled division events (E8
   testbed); **shared-identity** per-frame fitting (warm-start carries Gaussian identity,
@@ -46,6 +53,11 @@ framing.
   exports per-frame `.splat`s for the viewer. **All three RQ3 variants now in**:
   shared-identity, native-4D, and **deformation** (`GaussianSetDeform` — canonical
   Gaussians + per-primitive polynomial motion, O(N), smooth-by-construction).
+  **Superseded comparison:** `compare_temporal.py` gave every variant the same N (so
+  shared identity stored 3.4× more numbers) and scored its "interpolation" against a
+  neighbouring *training* frame. Use `scripts/temporal_matched.py` (matched storage, scored
+  on held-out frames, 3 seeds) and `scripts/temporal_summary.py`; on the phantom, blending
+  two neighbouring per-frame fits beats both continuous-time models between frames.
 - **HPC**: TU Dresden Alpha (A100) wired up — `scripts/hpc/` (setup + SLURM job).
   Converged real-data fit runs there; CPU is phantom-only.
 

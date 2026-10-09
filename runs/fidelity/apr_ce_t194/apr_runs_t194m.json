@@ -1,0 +1,98 @@
+[
+  {
+    "name": "aprm-e0.1",
+    "rel_error": 0.1,
+    "lossy_particles": false,
+    "particles": 3193881,
+    "computational_ratio": 3.9723959659110655,
+    "bytes": 1870535,
+    "ratio": 6.782743974317508,
+    "convert_s": 2.207416534423828,
+    "max_abs_err": 188.0,
+    "mean_abs_err": 9.912097930908203
+  },
+  {
+    "name": "aprmq-e0.1",
+    "rel_error": 0.1,
+    "lossy_particles": true,
+    "particles": 3193881,
+    "computational_ratio": 3.9723959659110655,
+    "bytes": 1552613,
+    "ratio": 8.171617782409395,
+    "convert_s": 2.207416534423828,
+    "max_abs_err": 190.0,
+    "mean_abs_err": 10.619675636291504
+  },
+  {
+    "name": "aprm-e0.2",
+    "rel_error": 0.2,
+    "lossy_particles": false,
+    "particles": 1112797,
+    "computational_ratio": 11.40132476992659,
+    "bytes": 632673,
+    "ratio": 20.053582182264773,
+    "convert_s": 2.22775936126709,
+    "max_abs_err": 191.0,
+    "mean_abs_err": 11.702898025512695
+  },
+  {
+    "name": "aprmq-e0.2",
+    "rel_error": 0.2,
+    "lossy_particles": true,
+    "particles": 1112797,
+    "computational_ratio": 11.40132476992659,
+    "bytes": 510856,
+    "ratio": 24.835491801995083,
+    "convert_s": 2.22775936126709,
+    "max_abs_err": 191.0,
+    "mean_abs_err": 12.118080139160156
+  },
+  {
+    "name": "aprm-e0.4",
+    "rel_error": 0.4,
+    "lossy_particles": false,
+    "particles": 238425,
+    "computational_ratio": 53.213211701793014,
+    "bytes": 169239,
+    "ratio": 74.96711750837572,
+    "convert_s": 2.0415871143341064,
+    "max_abs_err": 198.0,
+    "mean_abs_err": 13.387733459472656
+  },
+  {
+    "name": "aprmq-e0.4",
+    "rel_error": 0.4,
+    "lossy_particles": true,
+    "particles": 238425,
+    "computational_ratio": 53.213211701793014,
+    "bytes": 136370,
+    "ratio": 93.03629830607905,
+    "convert_s": 2.0415871143341064,
+    "max_abs_err": 199.0,
+    "mean_abs_err": 13.751399993896484
+  },
+  {
+    "name": "aprm-e0.8",
+    "rel_error": 0.8,
+    "lossy_particles": false,
+    "particles": 68994,
+    "computational_ratio": 183.89077311070528,
+    "bytes": 58078,
+    "ratio": 218.45380350563036,
+    "convert_s": 1.394822359085083,
+    "max_abs_err": 204.0,
+    "mean_abs_err": 15.647534370422363
+  },
+  {
+    "name": "aprmq-e0.8",
+    "rel_error": 0.8,
+    "lossy_particles": true,
+    "particles": 68994,
+    "computational_ratio": 183.89077311070528,
+    "bytes": 47131,
+    "ratio": 269.1935244319026,
+    "convert_s": 1.394822359085083,
+    "max_abs_err": 206.0,
+    "mean_abs_err": 16.02734375
+  }
+]
