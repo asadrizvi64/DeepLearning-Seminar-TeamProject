@@ -9,7 +9,8 @@ const pptxgen = require("pptxgenjs");
 
 const SKILL_THEME = "C:/Users/HP/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/2f257813-b922-4324-81a1-b7bf94e1d78b/7b622470-5135-45a2-8466-2a58dfb54669/skills/pptx/scripts/apply_theme.js";
 const FIG = (f) => path.join(__dirname, "figs", f);
-const OUT = path.join(__dirname, "..", "Gaussian_Blobs_Microscopy_v3.pptx");
+// DECK_OUT=<path> writes elsewhere, e.g. while the deck is open (and locked) in PowerPoint
+const OUT = process.env.DECK_OUT || path.join(__dirname, "..", "Gaussian_Blobs_Microscopy_v3.pptx");
 
 const THEME = {
   name: "Fluorescence",
@@ -165,10 +166,10 @@ addSection("Problem and data");
     s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 6.8, y: y + 0.1, w: 2.7, h: 0.45, rectRadius: 0.08, fill: { color: col }, line: { color: col }, objectName: `goal-status-${i}` });
     txt(s, status, { x: 6.8, y: y + 0.1, w: 2.7, h: 0.45, fontSize: 14, bold: true, color: C.background1, align: "center", valign: "middle" });
   });
-  txt(s, "Added with our supervisor: do Gaussian blobs keep the nuclei, compared with standard compression at the same file size?",
+  txt(s, "Added by us, beyond the brief: do Gaussian blobs keep the nuclei, compared with standard compression at the same file size?",
     { x: 0.5, y: 4.4, w: 9.0, h: 0.6, fontSize: 15, color: C.text2 });
   notes(s,
-    "The project brief had four goals. First, fit Gaussian blobs to one microscope volume and study how quality depends on the number of blobs, the file size and the fitting time. We did that in depth, and went further: we checked whether the nuclei survive. Second, export the blobs to standard files and look at them in a browser: done, with our own simple viewer. Third, extend the blobs to time series, comparing one set of blobs per frame with 4D blobs: we built all three versions, but compared them only on synthetic data. Fourth, a player that lets biologists scrub through time: our viewer has a frame slider, but it switches between frames and does not interpolate. In the second half, together with our supervisor, we added a question the brief did not ask: compared with standard compression at the same file size, do Gaussian blobs keep the nuclei?",
+    "The project brief had four goals. First, fit Gaussian blobs to one microscope volume and study how quality depends on the number of blobs, the file size and the fitting time. We did that in depth, and went further: we checked whether the nuclei survive. Second, export the blobs to standard files and look at them in a browser: done, with our own simple viewer. Third, extend the blobs to time series, comparing one set of blobs per frame with 4D blobs: we built all three versions, but compared them only on synthetic data. Fourth, a player that lets biologists scrub through time: our viewer has a frame slider, but it switches between frames and does not interpolate. In the second half we added, on our own initiative, a question the brief did not ask: compared with standard compression at the same file size, do Gaussian blobs keep the nuclei?",
     ["Brief: the project description from the chair, with the four goals.",
      ".ply / .splat: standard file formats for Gaussian blobs that browser viewers can open.",
      "4D blobs: blobs that also have a position and extent in time, so one set covers the whole recording."],
@@ -650,13 +651,14 @@ addSection("Conclusion");
       { x: 1.3, y, w: 8.2, h: 0.85, fontSize: 16 });
   });
   notes(s,
-    "This is a change of direction, agreed with our supervisor after his feedback. So far we asked whether Gaussian blobs can store and show microscopy data; he pointed out that labs store their raw data losslessly and rarely use lossy formats like JPEG. So the next step is compression biologists would actually use. First, lossless storage, which gives about 2 to 4 times; we measured 4.2 times with lossless JPEG-XL on one C. elegans frame. Second, one specific near-lossless approach, noise-bounded coding, where every voxel may change but by less than the camera noise. Third, video codecs, which exploit the similarity between neighbouring slices and time points. And fourth, judging success by whether cells can still be tracked, using the Cell Tracking Challenge's official scores.",
+    "This is our proposal for what could come next; it is not an agreed plan. So far we asked whether Gaussian blobs can store and show microscopy data. In informal feedback at the chair we were told that labs store their raw data losslessly and rarely use lossy formats like JPEG. So a natural next step is compression biologists would actually use. First, lossless storage, which gives about 2 to 4 times; we measured 4.2 times with lossless JPEG-XL on one C. elegans frame. Second, one specific near-lossless approach, noise-bounded coding, where every voxel may change but by less than the camera noise. Third, video codecs, which exploit the similarity between neighbouring slices and time points. And fourth, judging success by whether cells can still be tracked, using the Cell Tracking Challenge's official scores.",
     ["Lossless: the decompressed data is bit-for-bit identical to the original.",
      "Near-lossless: small, bounded changes are allowed. Noise-bounded coding is one way to set that bound: below the camera's own noise.",
      "Video codec: compression made for movies (e.g. H.265, AV1) that predicts each frame from its neighbours.",
      "Tracking: following each cell over time, including divisions."],
     ["How much do lossless methods give? On our C. elegans frame: lossless JPEG-XL 4.2x, JPEG-LS 2.9x, JPEG2000 lossless 2.7x, Zstandard 2.5x. Noise-bounded coding can go further; how far depends on the camera noise, and we have not measured it on our data yet.",
-     "Why change direction? The supervisor's feedback: biologists need their measurements to stay valid, and they trust lossless or noise-bounded storage. Gaussian blobs remain interesting for viewing."]);
+     "Why this direction? Informal feedback we received: biologists need their measurements to stay valid, and they trust lossless or noise-bounded storage. Gaussian blobs remain interesting for viewing.",
+     "Was this agreed with the chair? No. It is our own suggestion; the brief's four goals are what the project was set."]);
 }
 
 (async () => {

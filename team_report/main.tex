@@ -166,9 +166,10 @@ representation to time series, comparing per-frame Gaussian sets with shared ide
 4D Gaussians on storage, smoothness and frame-to-frame consistency; and (4)~play the time
 series back in a browser. \Cref{tab:scope} maps each goal to the work in this report. Goal~1
 was covered in depth and extended to object-level evaluation; Goals~2--4 were implemented in
-a basic form. After a meeting with the supervisor, the second half of the project turned to
-an object-level comparison of Gaussian compression with standard codecs (\cref{sec:sota}),
-and the next phase will turn to compression that biologists use (\cref{sec:discussion}).
+a basic form. In the second half of the project we added, on our own initiative, an
+object-level comparison of Gaussian compression with standard codecs (\cref{sec:sota}). It
+goes beyond the brief and is not one of its goals. \Cref{sec:discussion} proposes compression
+that biologists use as a possible next step.
 
 \begin{table}[tb]
   \centering\small
@@ -193,7 +194,7 @@ and the next phase will turn to compression that biologists use (\cref{sec:discu
       & Partial: the viewer steps through per-frame sets with a slider (discrete frames); the
         4D model's continuous time is not played back in the browser.
       & \cref{sec:temporal} \\
-    Added with the supervisor
+    Added by us, beyond the brief
       & Object-level comparison of Gaussian compression with standard codecs at matched size.
       & \cref{sec:sota} \\
     \bottomrule
@@ -1054,12 +1055,12 @@ background as a sum of broad blobs; several findings (background capacity, widen
 symptoms of that. Much of the effort went into finding and fixing our own evaluation bugs
 (\cref{app:bugs}); one of them, the JPEG2000 axis error, had reversed our first conclusion.
 
-\paragraph{Feedback from the supervisor and next steps.} Our supervisor pointed out that
+\paragraph{Possible next steps.} In informal feedback at the chair it was pointed out to us that
 biologists store raw data losslessly and that lossy image codecs such as JPEG are rarely used
 in practice. Our results agree that viewing and measuring need separate validation: splats
-can look convincing and still lose nuclei for one detector while gaining them for another. The
-project therefore turns, by agreement with the supervisor, from Gaussian representations
-towards compression that biologists would accept. On one \emph{C.~elegans}
+can look convincing and still lose nuclei for one detector while gaining them for another. We
+therefore see compression that biologists would accept as the natural continuation; this is our
+proposal, not an agreed plan. On one \emph{C.~elegans}
 frame (embryo~1, t150; 8-bit, \SI{12.7}{MB}) standard
 lossless coders reached $1.9$--$4.2\times$: JPEG-XL lossless per slice $4.2\times$, JPEG-LS
 $2.9\times$, JPEG2000 lossless $2.7\times$, Zstandard $2.5\times$. Three directions follow:
